@@ -150,9 +150,13 @@ class MapsFragment : Fragment() {
                     val routeGeometry = route?.geometry // Get the encoded polyline geometry of the route
                     val decodedRoutePoints = PolyUtil.decode(routeGeometry)
                     val polylineOptions = PolylineOptions()
+                        .startCap(RoundCap())
+                        .endCap(RoundCap())
+                        .width(POLYLINE_STROKE_WIDTH_PX.toFloat())
+                        .color(requireContext().getColor(R.color.colorPrimary))
+                        .jointType(JointType.ROUND)
                         .addAll(decodedRoutePoints.map { LatLng(it.latitude, it.longitude) })
                     polyline = googleMap.addPolyline(polylineOptions)
-                    stylePolyLine()
 
                     // Handle the direction response
                 } else {
@@ -169,14 +173,6 @@ class MapsFragment : Fragment() {
     private fun clearPolyLine(){
         polyline?.remove()
         polyline = null
-    }
-
-    private fun stylePolyLine(){
-        polyline?.startCap = RoundCap()
-        polyline?.endCap = RoundCap()
-        polyline?.width = POLYLINE_STROKE_WIDTH_PX.toFloat()
-        polyline?.color = requireContext().getColor(R.color.colorPrimary)
-        polyline?.jointType = JointType.ROUND
     }
 
 
