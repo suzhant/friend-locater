@@ -22,15 +22,11 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
-import com.example.googlemap.modal.GeoPoint
 import com.example.googlemap.modal.LocationResult
-import com.example.googlemap.modal.MyLocation
 import com.example.googlemap.services.ApiClient
 import com.example.googlemap.services.LocationIQService
 import com.example.googlemap.utils.Constants
 import com.example.osm.adapter.PlaceAdapter
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 

@@ -3,9 +3,7 @@ package com.example.googlemap
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.example.googlemap.modal.GeoPoint
 import com.example.googlemap.modal.LocationResult
-import com.example.googlemap.modal.MyLocation
 
 class MapViewModel : ViewModel() {
 
