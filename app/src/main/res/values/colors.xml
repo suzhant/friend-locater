@@ -11,5 +11,6 @@
     <color name="colorPrimaryText">#7C7C7C</color>
     <color name="colorTextLight">#E5E5E5</color>
     <color name="colorSecondaryText">#858585</color>
+    <color name="transparent">#00FFFFFF</color>
 
 </resources>
