@@ -11,11 +11,9 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.googlemap.MainActivity
-import com.example.googlemap.MapViewModel
 import com.example.googlemap.R
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -28,7 +26,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 class StartScreenActivity : AppCompatActivity() {
 
     private val REQUEST_CHECK_SETTINGS = 102
-    private val viewModel : MapViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
