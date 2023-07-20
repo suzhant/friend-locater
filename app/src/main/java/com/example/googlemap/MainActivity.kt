@@ -43,8 +43,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private lateinit var textWatcher: TextWatcher
     private var isEditMode = true
     private lateinit var locationIQService : LocationIQService
-    private var currentLat = 0.0
-    private var currentLong = 0.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,7 +50,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         setContentView(binding.root)
 
         checkPermission()
-        checkGps()
         initFragment()
         initViews()
         locationIQService = ApiClient.retrofit.create(LocationIQService::class.java)
@@ -120,29 +117,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         fragmentTransaction.commit()
     }
 
-    private fun checkGps() {
-        val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
-        val isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-
-        if (!isGPSEnabled) {
-            // GPS is disabled
-            buildAlertMessageNoGps()
-        }
-    }
-
-    private fun buildAlertMessageNoGps() {
-        val builder = MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
-        builder.setTitle(getString(R.string.gps_title))
-        builder.setMessage(getString(R.string.gps_message))
-        builder.setPositiveButton(R.string.settings) { dialog, which ->
-            startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-        }
-        builder.setNegativeButton(R.string.cancel) { _, _ ->
-
-        }
-        builder.setCancelable(false)
-        builder.show()
-    }
 
     private fun checkPermission() {
         val permissions = arrayOf(
@@ -178,11 +152,13 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             val permissionName = it.key
             if (permissionName == ACCESS_FINE_LOCATION || permissionName == ACCESS_COARSE_LOCATION) {
                 locationGranted = isGranted
-                viewModel.setLocationPermissionGranted(true)
             }
         }
         if (!locationGranted) {
+            viewModel.setLocationPermissionGranted(false)
             showDialog()
+        }else{
+            viewModel.setLocationPermissionGranted(true)
         }
     }
 

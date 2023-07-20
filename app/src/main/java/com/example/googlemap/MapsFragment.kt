@@ -1,13 +1,20 @@
 package com.example.googlemap
 
+import android.Manifest
 import android.annotation.SuppressLint
-import androidx.fragment.app.Fragment
-
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.example.googlemap.databinding.FragmentMapsBinding
 import com.example.googlemap.modal.DirectionResponse
@@ -15,8 +22,12 @@ import com.example.googlemap.services.ApiClient
 import com.example.googlemap.services.LocationIQRoutingService
 import com.example.googlemap.utils.Constants.API_KEY
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationAvailability
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
-
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -27,6 +38,7 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.maps.android.PolyUtil
 import retrofit2.Call
 import retrofit2.Callback
@@ -51,6 +63,7 @@ class MapsFragment : Fragment() {
     private lateinit var locationIQRoutingService: LocationIQRoutingService
     private var polyline: Polyline? = null
     private val POLYLINE_STROKE_WIDTH_PX = 12
+    private lateinit var locationCallback: LocationCallback
 
     private val callback = OnMapReadyCallback { map ->
         googleMap = map
@@ -87,45 +100,140 @@ class MapsFragment : Fragment() {
 
 
         binding.fabCurrent.setOnClickListener {
-            val position = LatLng(curLatitude,curLongitude)
-            val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
-            googleMap.animateCamera(cameraUpdate,duration,null)
+           getDeviceLocation()
         }
 
         viewModel.locationPermissionGranted.observe(viewLifecycleOwner){granted ->
             if (granted){
-                getDeviceLocation()
+                checkGps()
             }
         }
 
+        createLocationCallback()
+    }
+
+    private fun checkGps() {
+        val locationManager = context?.getSystemService(AppCompatActivity.LOCATION_SERVICE) as LocationManager
+        val isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+
+        if (!isGPSEnabled) {
+            // GPS is disabled
+            buildAlertMessageNoGps()
+        }else{
+            getDeviceLocation()
+        }
+    }
+
+    private fun buildAlertMessageNoGps() {
+        val builder = MaterialAlertDialogBuilder(requireContext(), R.style.AlertDialogTheme)
+        builder.setTitle(getString(R.string.gps_title))
+        builder.setMessage(getString(R.string.gps_message))
+        builder.setPositiveButton(R.string.settings) { dialog, which ->
+            startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+        }
+        builder.setNegativeButton(R.string.cancel) { _, _ ->
+
+        }
+        builder.setCancelable(false)
+        builder.show()
     }
 
 
     @SuppressLint("MissingPermission")
     private fun getDeviceLocation() {
         try {
-            val locationResult = fusedLocationProviderClient.lastLocation
-            locationResult.addOnCompleteListener(requireActivity()) { task ->
-                if (task.isSuccessful) {
-                    // Set the map's camera position to the current location of the device.
-                    val lastKnownLocation = task.result
-                    googleMap.isMyLocationEnabled = true
-                    curLatitude = lastKnownLocation.latitude
-                    curLongitude = lastKnownLocation.longitude
-                    val position = LatLng(curLatitude, curLongitude)
-                    val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
-                    googleMap.animateCamera(cameraUpdate,duration,null)
-                } else {
-                    Log.d("location", "Current location is null. Using defaults.")
-                    Log.e("location", "Exception: %s", task.exception)
-                    googleMap.moveCamera(CameraUpdateFactory
-                        .newLatLngZoom(LatLng(0.0,0.0), zoomLevel))
-                    googleMap.isMyLocationEnabled = false
+            fusedLocationProviderClient.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        googleMap.isMyLocationEnabled = true
+                        // Use the location data here
+                        val latitude = location.latitude
+                        val longitude = location.longitude
+                        curLatitude = latitude
+                        curLongitude = longitude
+                        val position = LatLng(curLatitude, curLongitude)
+                        val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
+                        googleMap.animateCamera(cameraUpdate,duration,null)
+                    } else {
+                        // Location is null (no last known location available)
+                        // You might want to request location updates instead
+                        startLocationUpdates()
+                        googleMap.isMyLocationEnabled = false
+                    }
                 }
-            }
+                .addOnFailureListener { exception ->
+                    // Handle any errors that occurred while getting the location
+                }
         } catch (e: SecurityException) {
             Log.e("Exception: %s", e.message, e)
         }
+    }
+
+    private fun createLocationCallback() {
+        locationCallback = object : LocationCallback() {
+
+            override fun onLocationResult(locationResult: LocationResult) {
+                locationResult.lastLocation?.let { location ->
+                    // Use the location data here
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+                    if (ActivityCompat.checkSelfPermission(
+                            requireContext(),
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                            requireContext(),
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        return
+                    }
+                    googleMap.isMyLocationEnabled = true
+                    curLatitude = latitude
+                    curLongitude = longitude
+                    val position = LatLng(curLatitude, curLongitude)
+                    val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
+                    googleMap.animateCamera(cameraUpdate,duration,null)
+                }
+            }
+
+            override fun onLocationAvailability(locationAvailability: LocationAvailability) {
+                // This callback is triggered when the availability of location updates changes.
+                // You can handle it as needed.
+            }
+        }
+    }
+
+    private fun startLocationUpdates() {
+        val locationRequest =
+            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
+                .setWaitForAccurateLocation(false)
+                .setMinUpdateIntervalMillis(LocationRequest.Builder.IMPLICIT_MIN_UPDATE_INTERVAL)
+                .setMaxUpdateAgeMillis(20000)
+                .build()
+
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationProviderClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                null
+            )
+        } else {
+            // Handle the case where location permission is not granted
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Stop location updates when the activity is not visible
+        stopLocationUpdates()
+    }
+
+    private fun stopLocationUpdates() {
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback)
     }
 
     private fun getRoute(endLongitude: Double, endLatitude : Double) {
@@ -139,7 +247,7 @@ class MapsFragment : Fragment() {
         call.enqueue(object : Callback<DirectionResponse> {
             override fun onResponse(
                 call: Call<DirectionResponse>,
-                response: Response<DirectionResponse>
+                response: Response<DirectionResponse>,
             ) {
                 if (response.isSuccessful) {
                     val directionResponse = response.body()
@@ -187,6 +295,7 @@ class MapsFragment : Fragment() {
     }
 
     override fun onDestroy() {
+        stopLocationUpdates()
         super.onDestroy()
         mapFragment.onDestroy()
     }
