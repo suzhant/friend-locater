@@ -1,24 +1,16 @@
 package com.example.googlemap
 
-import android.Manifest.permission.ACCESS_COARSE_LOCATION
-import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
@@ -27,12 +19,11 @@ import com.example.googlemap.services.ApiClient
 import com.example.googlemap.services.LocationIQService
 import com.example.googlemap.utils.Constants
 import com.example.osm.adapter.PlaceAdapter
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 
 class MainActivity : AppCompatActivity(), PlaceListener {
 
-
+    private val REQUEST_CHECK_SETTINGS: Int = 123
     private lateinit var binding: ActivityMainBinding
     private val viewModel : MapViewModel by viewModels()
     private lateinit var placeSearch: PlaceSearch
@@ -48,8 +39,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        checkPermission()
         initFragment()
         initViews()
         locationIQService = ApiClient.retrofit.create(LocationIQService::class.java)
@@ -118,70 +107,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     }
 
 
-    private fun checkPermission() {
-        val permissions = arrayOf(
-            ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION
-        )
-        val finePermission = ContextCompat.checkSelfPermission(
-            this,
-            permissions[0]
-        ) == PackageManager.PERMISSION_GRANTED
-        val coarsePermission = ContextCompat.checkSelfPermission(
-            this,
-            permissions[1]
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!finePermission || !coarsePermission) {
-            requestPermissionLauncher.launch(
-                arrayOf(
-                    ACCESS_FINE_LOCATION,
-                    ACCESS_COARSE_LOCATION
-                )
-            )
-        }else{
-            viewModel.setLocationPermissionGranted(true)
-        }
-    }
-
-    private val requestPermissionLauncher= registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        var locationGranted = false
-        permissions.entries.forEach {
-            val isGranted = it.value
-            val permissionName = it.key
-            if (permissionName == ACCESS_FINE_LOCATION || permissionName == ACCESS_COARSE_LOCATION) {
-                locationGranted = isGranted
-            }
-        }
-        if (!locationGranted) {
-            viewModel.setLocationPermissionGranted(false)
-            showDialog()
-        }else{
-            viewModel.setLocationPermissionGranted(true)
-        }
-    }
-
-    private fun showDialog() {
-        var message = ""
-        message = getString(R.string.location_permission_message)
-
-        val builder = MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
-        builder.setTitle(R.string.permission_required)
-        builder.setMessage(message)
-        builder.setPositiveButton(R.string.settings) { dialog, which ->
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            intent.data = Uri.parse("package:$packageName")
-            startActivity(intent)
-        }
-        builder.setNegativeButton(R.string.cancel) { _, _ ->
-
-        }
-        builder.setCancelable(false)
-        builder.show()
-    }
-
-
     private fun searchLocation(query: String) {
         val apiKey = Constants.API_KEY
         val call = locationIQService.searchLocation(apiKey, query)
@@ -204,6 +129,15 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                 // Handle failure
             }
         })
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CHECK_SETTINGS){
+            if (resultCode == RESULT_OK){
+               viewModel.setGps(true)
+            }
+        }
     }
 
 //    private fun performPlaceSearch(query: String) {

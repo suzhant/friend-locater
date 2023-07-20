@@ -2,11 +2,12 @@ package com.example.googlemap
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -21,12 +22,14 @@ import com.example.googlemap.modal.DirectionResponse
 import com.example.googlemap.services.ApiClient
 import com.example.googlemap.services.LocationIQRoutingService
 import com.example.googlemap.utils.Constants.API_KEY
+import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -38,7 +41,6 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.maps.android.PolyUtil
 import retrofit2.Call
 import retrofit2.Callback
@@ -46,6 +48,7 @@ import retrofit2.Response
 
 class MapsFragment : Fragment() {
 
+    private val REQUEST_CHECK_SETTINGS: Int = 123
     private val binding: FragmentMapsBinding by lazy {
         FragmentMapsBinding.inflate(
             layoutInflater
@@ -64,6 +67,7 @@ class MapsFragment : Fragment() {
     private var polyline: Polyline? = null
     private val POLYLINE_STROKE_WIDTH_PX = 12
     private lateinit var locationCallback: LocationCallback
+    private lateinit var locationRequest: LocationRequest
 
     private val callback = OnMapReadyCallback { map ->
         googleMap = map
@@ -86,6 +90,7 @@ class MapsFragment : Fragment() {
         mapFragment.getMapAsync(callback)
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        locationRequest = createLocationRequest()
         locationIQRoutingService = ApiClient.retrofit.create(LocationIQRoutingService::class.java)
 
         viewModel.data.observe(viewLifecycleOwner){data ->
@@ -98,17 +103,17 @@ class MapsFragment : Fragment() {
             googleMap.animateCamera(cameraUpdate,duration,null)
         }
 
-
-        binding.fabCurrent.setOnClickListener {
-           getDeviceLocation()
-        }
-
-        viewModel.locationPermissionGranted.observe(viewLifecycleOwner){granted ->
-            if (granted){
-                checkGps()
+        viewModel.gpsEnabled.observe(viewLifecycleOwner){enabled ->
+            if (enabled){
+                getDeviceLocation()
             }
         }
 
+        binding.fabCurrent.setOnClickListener {
+            checkGps()
+        }
+
+        getDeviceLocation()
         createLocationCallback()
     }
 
@@ -118,26 +123,44 @@ class MapsFragment : Fragment() {
 
         if (!isGPSEnabled) {
             // GPS is disabled
-            buildAlertMessageNoGps()
+            displayLocationSettingsRequest()
         }else{
             getDeviceLocation()
         }
     }
 
-    private fun buildAlertMessageNoGps() {
-        val builder = MaterialAlertDialogBuilder(requireContext(), R.style.AlertDialogTheme)
-        builder.setTitle(getString(R.string.gps_title))
-        builder.setMessage(getString(R.string.gps_message))
-        builder.setPositiveButton(R.string.settings) { dialog, which ->
-            startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+    private fun displayLocationSettingsRequest() {
+        val builder = LocationSettingsRequest.Builder().addLocationRequest(locationRequest)
+        builder.setAlwaysShow(true)
+        val result = LocationServices.getSettingsClient(requireActivity()).checkLocationSettings(builder.build())
+        result.addOnFailureListener {
+            if (it is ResolvableApiException) {
+                try {
+                    it.startResolutionForResult(requireActivity(), REQUEST_CHECK_SETTINGS)
+                } catch (e: IntentSender.SendIntentException) {
+                    // Ignore the error.
+                } catch (e: ClassCastException) {
+                    // Ignore, should be an impossible error.
+                }
+            }
         }
-        builder.setNegativeButton(R.string.cancel) { _, _ ->
-
-        }
-        builder.setCancelable(false)
-        builder.show()
     }
 
+    private fun createLocationRequest(): LocationRequest {
+        return LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
+            .setWaitForAccurateLocation(false)
+            .setMinUpdateIntervalMillis(LocationRequest.Builder.IMPLICIT_MIN_UPDATE_INTERVAL)
+            .setMaxUpdateAgeMillis(20000)
+            .build()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == REQUEST_CHECK_SETTINGS){
+            if (resultCode == RESULT_OK){
+                getDeviceLocation()
+            }
+        }
+    }
 
     @SuppressLint("MissingPermission")
     private fun getDeviceLocation() {
@@ -204,13 +227,6 @@ class MapsFragment : Fragment() {
     }
 
     private fun startLocationUpdates() {
-        val locationRequest =
-            LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)
-                .setWaitForAccurateLocation(false)
-                .setMinUpdateIntervalMillis(LocationRequest.Builder.IMPLICIT_MIN_UPDATE_INTERVAL)
-                .setMaxUpdateAgeMillis(20000)
-                .build()
-
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -221,8 +237,6 @@ class MapsFragment : Fragment() {
                 locationCallback,
                 null
             )
-        } else {
-            // Handle the case where location permission is not granted
         }
     }
 
