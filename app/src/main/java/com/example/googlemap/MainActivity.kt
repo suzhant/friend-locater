@@ -11,6 +11,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
@@ -47,9 +48,9 @@ class MainActivity : AppCompatActivity(), PlaceListener {
 
     private fun initViews() {
         placeSearch = PlaceSearch()
-        binding.editQuery.setOnEditorActionListener { _, actionId, _ ->
+        binding.searchView.editText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                val query = binding.editQuery.text.toString()
+                val query = binding.searchView.editText.text.toString()
                 //  performPlaceSearch(query)
                 searchLocation(query)
                 return@setOnEditorActionListener true
@@ -87,8 +88,15 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             }
 
         }
-        binding.editQuery.addTextChangedListener(textWatcher)
+        binding.searchView.editText.addTextChangedListener(textWatcher)
 
+        binding.searchBar.setNavigationOnClickListener {
+            if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                binding.drawerLayout.closeDrawer(GravityCompat.START)
+            } else {
+                binding.drawerLayout.openDrawer(GravityCompat.START)
+            }
+        }
     }
 
 
@@ -178,10 +186,11 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     override fun onPlaceClicked(place: LocationResult) {
         viewModel.setData(place)
         adapter.setPlaces(mutableListOf())
-        binding.editQuery.setText(place.displayName)
-        binding.editQuery.setSelection(binding.editQuery.text!!.length)
-        hideKeyboard(binding.editQuery)
+        binding.searchBar.text = place.displayName
+//        binding.searchView.editText.setSelection(binding.searchView.editText.text!!.length)
+//        hideKeyboard(binding.editQuery)
         isEditMode = false
+        binding.searchView.hide()
     }
 
 

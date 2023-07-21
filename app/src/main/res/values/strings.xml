@@ -6,4 +6,6 @@
     <string name="cancel">Cancel</string>
     <string name="location_permission_message">We need to access location permission to get current location</string>
     <string name="permission_required">Permission required</string>
+    <string name="navigation_drawer_open">Open Navigation Drawer</string>
+    <string name="navigation_drawer_close">Close Navigation Drawer</string>
 </resources>

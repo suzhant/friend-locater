@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+<item
+android:id="@+id/main_item"
+android:title="Main">
+<menu>
+    <item
+        android:id="@+id/search_item"
+        android:icon="@drawable/baseline_search_24"
+        android:title="Search"
+        android:menuCategory="container"
+        android:checkable="true"
+        app:showAsAction="ifRoom"/>
+</menu>
+</item>
+<item
+android:id="@+id/labels_item"
+    android:menuCategory="secondary"
+    android:title="Profile">
+<menu>
+    <item
+        android:id="@+id/label_one"
+        android:icon="@drawable/baseline_settings_24"
+        android:title="@string/settings"
+        android:checkable="true"
+        app:showAsAction="ifRoom"/>
+</menu>
+</item>
+
+</menu>
