@@ -18,8 +18,11 @@
         android:theme="@style/Theme.GoogleMap"
         tools:targetApi="31">
         <activity
+            android:name=".ui.LoginActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.StartScreenActivity"
-            android:exported="true" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -32,8 +35,8 @@
             android:value="AIzaSyDl0_Eo_KyHz_LL8wf_N0xuWay5fN3Tr0g" />
 
         <activity
-            android:name=".MainActivity"
-            android:exported="false"/>
+            android:name=".ui.MainActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

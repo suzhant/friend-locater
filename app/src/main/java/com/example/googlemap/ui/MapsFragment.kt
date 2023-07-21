@@ -1,4 +1,4 @@
-package com.example.googlemap
+package com.example.googlemap.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -17,6 +17,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import com.example.googlemap.MapViewModel
+import com.example.googlemap.R
 import com.example.googlemap.databinding.FragmentMapsBinding
 import com.example.googlemap.modal.DirectionResponse
 import com.example.googlemap.services.ApiClient

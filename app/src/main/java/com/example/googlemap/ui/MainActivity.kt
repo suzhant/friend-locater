@@ -1,4 +1,4 @@
-package com.example.googlemap
+package com.example.googlemap.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -13,6 +13,8 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.googlemap.MapViewModel
+import com.example.googlemap.PlaceSearch
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
 import com.example.googlemap.modal.LocationResult

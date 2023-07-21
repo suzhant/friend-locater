@@ -13,7 +13,6 @@ import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.example.googlemap.MainActivity
 import com.example.googlemap.R
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -35,7 +34,7 @@ class StartScreenActivity : AppCompatActivity() {
 
     private fun goToNextActivity(){
         Handler(Looper.getMainLooper()).postDelayed(Runnable {
-            val intent = Intent(this,MainActivity::class.java)
+            val intent = Intent(this, LoginActivity::class.java)
             startActivity(intent)
             finishAfterTransition()
         },2500)

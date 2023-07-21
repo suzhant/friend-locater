@@ -4,6 +4,5 @@
     android:shape="oval">
 
     <solid android:color="@color/transparent" /> <!-- Change the color to your desired background color -->
-    <stroke android:color="@color/black" android:width="2dp"/>
 
 </shape>
