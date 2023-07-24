@@ -13,5 +13,10 @@
     <color name="colorSecondaryText">#858585</color>
     <color name="transparent">#00FFFFFF</color>
     <color name="red">#ff0000</color>
+    <color name="gray_5">#e5e5e5</color>
+    <color name="gray_4">#c9c9c9</color>
+    <color name="gray_3">#aeaeae</color>
+    <color name="gray_2">#838383</color>
+    <color name="gray_1">#3a3a3a</color>
 
 </resources>

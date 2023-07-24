@@ -10,14 +10,12 @@ android:title="Main">
         android:id="@+id/search_item"
         android:icon="@drawable/baseline_search_24"
         android:title="Search"
-        android:menuCategory="container"
         android:checkable="true"
         app:showAsAction="ifRoom"/>
 </menu>
 </item>
 <item
 android:id="@+id/labels_item"
-    android:menuCategory="secondary"
     android:title="Profile">
 <menu>
     <item
@@ -29,4 +27,10 @@ android:id="@+id/labels_item"
 </menu>
 </item>
 
+<item
+    android:id="@+id/sign_out"
+    android:icon="@drawable/baseline_arrow_back_24"
+    android:title="sign out"
+    android:checkable="true"
+    app:showAsAction="ifRoom"/>
 </menu>

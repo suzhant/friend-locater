@@ -15,6 +15,7 @@ import androidx.core.view.GravityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.googlemap.MapViewModel
 import com.example.googlemap.PlaceSearch
+import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
 import com.example.googlemap.modal.LocationResult
@@ -22,6 +23,9 @@ import com.example.googlemap.services.ApiClient
 import com.example.googlemap.services.LocationIQService
 import com.example.googlemap.utils.Constants
 import com.example.osm.adapter.PlaceAdapter
+import com.google.android.gms.auth.api.Auth
+import com.google.firebase.auth.FirebaseAuth
+import okhttp3.internal.wait
 
 
 class MainActivity : AppCompatActivity(), PlaceListener {
@@ -37,11 +41,13 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private lateinit var textWatcher: TextWatcher
     private var isEditMode = true
     private lateinit var locationIQService : LocationIQService
+    private var auth : FirebaseAuth ?= null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        auth = FirebaseAuth.getInstance()
         initFragment()
         initViews()
         locationIQService = ApiClient.retrofit.create(LocationIQService::class.java)
@@ -99,8 +105,26 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                 binding.drawerLayout.openDrawer(GravityCompat.START)
             }
         }
+
+        binding.navigationView.setNavigationItemSelectedListener { menuItem ->
+            // Handle menu item selected
+            when(menuItem.itemId){
+                R.id.sign_out -> {
+                    menuItem.isChecked = true
+                    binding.drawerLayout.close()
+                    signOut()
+                    val intent = Intent(this,LoginActivity::class.java)
+                    startActivity(intent)
+                    finishAfterTransition()
+                }
+            }
+            true
+        }
     }
 
+    private fun signOut() {
+        auth?.signOut()
+    }
 
 
     private fun initFragment() {

@@ -15,4 +15,9 @@
         <item name="android:textColor">@color/colorSecondaryText</item>
     </style>
 
+    <!-- ProgressDialogTheme -->
+    <style name="ProgressDialogTheme" parent="Theme.MaterialComponents.Light.Dialog.Alert">
+        <item name="backgroundTint">@color/white</item>
+        <item name="cornerSize">4dp</item>
+    </style>
 </resources>
