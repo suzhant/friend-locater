@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import com.example.googlemap.PlaceSearch
 import com.example.googlemap.databinding.WidgetPlaceBinding
 import com.example.googlemap.listener.PlaceListener
 import com.example.googlemap.modal.LocationResult

@@ -23,9 +23,7 @@ import com.example.googlemap.services.ApiClient
 import com.example.googlemap.services.LocationIQService
 import com.example.googlemap.utils.Constants
 import com.example.osm.adapter.PlaceAdapter
-import com.google.android.gms.auth.api.Auth
 import com.google.firebase.auth.FirebaseAuth
-import okhttp3.internal.wait
 
 
 class MainActivity : AppCompatActivity(), PlaceListener {
@@ -106,16 +104,26 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             }
         }
 
+        binding.navigationView.setCheckedItem(R.id.search)
         binding.navigationView.setNavigationItemSelectedListener { menuItem ->
             // Handle menu item selected
             when(menuItem.itemId){
                 R.id.sign_out -> {
-                    menuItem.isChecked = true
                     binding.drawerLayout.close()
                     signOut()
                     val intent = Intent(this,LoginActivity::class.java)
                     startActivity(intent)
                     finishAfterTransition()
+                }
+
+                R.id.setting -> {
+                    binding.drawerLayout.close()
+                    val intent = Intent(this,SettingActivity::class.java)
+                    startActivity(intent)
+                }
+
+                R.id.search -> {
+                    initFragment()
                 }
             }
             true

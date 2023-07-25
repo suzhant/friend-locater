@@ -5,18 +5,19 @@ import android.content.Intent
 import android.content.IntentSender
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityLoginBinding
 import com.example.googlemap.modal.UserData
+import com.example.googlemap.utils.ProgressHelper
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.DataSnapshot
@@ -42,7 +43,7 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
-        progressDialog = buildProgressDialog()
+        progressDialog = ProgressHelper.buildProgressDialog(this)
 
         binding.btnLogin.setOnClickListener {
 
@@ -56,6 +57,58 @@ class LoginActivity : AppCompatActivity() {
         binding.btnGoogleLogin.setOnClickListener {
             loginWithGoogle()
         }
+
+        binding.btnLogin.setOnClickListener {
+            loginWithPassword()
+        }
+
+        binding.btnForgotPassword.setOnClickListener {
+            val intent = Intent(this, ForgotPasswordActivity::class.java)
+            startActivity(intent)
+        }
+    }
+
+    private fun loginWithPassword() {
+        val email = binding.etEmail.text.toString()
+        val password = binding.etPassword.text.toString()
+        if (email.isEmpty()){
+           binding.ipEmail.error = "Email can't be empty"
+           binding.etEmail.requestFocus()
+            return
+        }
+        binding.ipEmail.isErrorEnabled = false
+
+        if (password.isEmpty()){
+            binding.ipPassword.error = "Email can't be empty"
+            binding.etPassword.requestFocus()
+            return
+        }
+        binding.ipPassword.isErrorEnabled = false
+
+
+        progressDialog.show()
+        auth?.signInWithEmailAndPassword(email, password)
+            ?.addOnCompleteListener(this) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success, update UI with the signed-in user's information
+                    Log.d(TAG, "signInWithEmail:success")
+                    val user = auth?.currentUser
+                    if (user!=null){
+                        progressDialog.dismiss()
+                        goToNextActivity()
+                    }
+
+                } else {
+                    progressDialog.dismiss()
+                    // If sign in fails, display a message to the user.
+                    Log.w(TAG, "signInWithEmail:failure", task.exception)
+                    Toast.makeText(
+                        baseContext,
+                        task.exception?.message,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
     }
 
     private fun loginWithGoogle() {
@@ -125,13 +178,18 @@ class LoginActivity : AppCompatActivity() {
                                             UserData(
                                                 userId = uid,
                                                 userName = displayName,
-                                                profilePicUrl = photoUrl?.toString()
+                                                profilePicUrl = photoUrl?.toString(),
+                                                email = email.toString()
                                             )
-
                                         }
 
                                        user?.let {
-                                           checkIfKeyExists(user.uid,userData!!)
+                                           database.getReference("users").child(user.uid).setValue(userData).addOnSuccessListener {
+                                               if (progressDialog.isShowing){
+                                                   progressDialog.dismiss()
+                                               }
+                                               goToNextActivity()
+                                           }
                                        }
 
                                     } else {
@@ -176,18 +234,12 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
-    private fun buildProgressDialog() : Dialog{
-        val dialog = MaterialAlertDialogBuilder(this,R.style.ProgressDialogTheme)
-        dialog.setView(R.layout.progress_bar)
-        dialog.setCancelable(false)
-        return dialog.create()
-    }
 
     private fun checkIfKeyExists(key: String, userData: UserData) {
-        FirebaseDatabase.getInstance().getReference(key)
+        database.getReference("users").child(key)
             .addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val keyExists = dataSnapshot.hasChild(key)
+                val keyExists = dataSnapshot.child(key).exists()
                 if (!keyExists){
                     database.getReference("users").child(key).setValue(userData).addOnSuccessListener {
                         if (progressDialog.isShowing){
@@ -196,6 +248,9 @@ class LoginActivity : AppCompatActivity() {
                         goToNextActivity()
                     }
                 }else{
+                    if (progressDialog.isShowing){
+                        progressDialog.dismiss()
+                    }
                     goToNextActivity()
                 }
             }

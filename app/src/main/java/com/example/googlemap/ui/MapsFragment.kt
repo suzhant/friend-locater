@@ -156,13 +156,6 @@ class MapsFragment : Fragment() {
             .build()
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == REQUEST_CHECK_SETTINGS){
-            if (resultCode == RESULT_OK){
-                getDeviceLocation()
-            }
-        }
-    }
 
     @SuppressLint("MissingPermission")
     private fun getDeviceLocation() {
