@@ -88,6 +88,14 @@ class SettingActivity : AppCompatActivity() {
 
         with(passBinding){
             btnConfirm.setOnClickListener {
+                val currentPassword = etPassword.text.toString()
+                if (currentPassword.isEmpty()){
+                    ipPassword.error = "Password cannot be empty"
+                    etPassword.requestFocus()
+                    return@setOnClickListener
+                }
+                ipPassword.isErrorEnabled = false
+
                 val newPassword = etNewPass.text.toString()
                 val passwordValid = isPasswordValid(newPassword)
                 if (!passwordValid){
@@ -105,7 +113,6 @@ class SettingActivity : AppCompatActivity() {
                 }
                 ipConfirmPass.isErrorEnabled = false
 
-                val currentPassword = etPassword.text.toString()
                 changePassword(newPassword,currentPassword)
 
             }
