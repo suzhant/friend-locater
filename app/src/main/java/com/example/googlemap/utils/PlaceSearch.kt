@@ -1,4 +1,4 @@
-package com.example.googlemap
+package com.example.googlemap.utils
 
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName

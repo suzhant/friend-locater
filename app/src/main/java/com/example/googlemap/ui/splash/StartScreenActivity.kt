@@ -1,4 +1,4 @@
-package com.example.googlemap.ui
+package com.example.googlemap.ui.splash
 
 import android.Manifest
 import android.content.Intent
@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.googlemap.R
+import com.example.googlemap.ui.LoginActivity
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices

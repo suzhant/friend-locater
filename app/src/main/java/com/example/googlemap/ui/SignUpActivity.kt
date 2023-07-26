@@ -3,17 +3,14 @@ package com.example.googlemap.ui
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.googlemap.databinding.ActivitySignUpBinding
 import com.example.googlemap.modal.UserData
+import com.example.googlemap.ui.main.MainActivity
 import com.example.googlemap.utils.ProgressHelper
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 
 class SignUpActivity : AppCompatActivity() {
 
@@ -111,7 +108,7 @@ class SignUpActivity : AppCompatActivity() {
     }
 
     private fun goToNextActivity(){
-        val intent = Intent(this,MainActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finishAfterTransition()
     }

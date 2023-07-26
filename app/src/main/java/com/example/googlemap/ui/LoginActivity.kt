@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityLoginBinding
 import com.example.googlemap.modal.UserData
+import com.example.googlemap.ui.main.MainActivity
 import com.example.googlemap.utils.ProgressHelper
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
 import com.google.android.gms.auth.api.identity.Identity
@@ -173,6 +174,7 @@ class LoginActivity : AppCompatActivity() {
                                     if (task.isSuccessful) {
                                         // Sign in success, update UI with the signed-in user's information
                                         Log.d(TAG, "signInWithCredential:success")
+
                                         val user = auth?.currentUser
                                         val userData =  user?.run {
                                             UserData(
@@ -183,14 +185,9 @@ class LoginActivity : AppCompatActivity() {
                                             )
                                         }
 
-                                       user?.let {
-                                           database.getReference("users").child(user.uid).setValue(userData).addOnSuccessListener {
-                                               if (progressDialog.isShowing){
-                                                   progressDialog.dismiss()
-                                               }
-                                               goToNextActivity()
-                                           }
-                                       }
+                                        if (userData != null) {
+                                            checkIfKeyExists(key = auth?.uid!!, userData = userData)
+                                        }
 
                                     } else {
                                         // If sign in fails, display a message to the user.
@@ -239,8 +236,7 @@ class LoginActivity : AppCompatActivity() {
         database.getReference("users").child(key)
             .addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
-                val keyExists = dataSnapshot.child(key).exists()
-                if (!keyExists){
+                if (!dataSnapshot.exists()){
                     database.getReference("users").child(key).setValue(userData).addOnSuccessListener {
                         if (progressDialog.isShowing){
                             progressDialog.dismiss()
@@ -248,10 +244,21 @@ class LoginActivity : AppCompatActivity() {
                         goToNextActivity()
                     }
                 }else{
-                    if (progressDialog.isShowing){
-                        progressDialog.dismiss()
-                    }
-                    goToNextActivity()
+                    val pic = auth?.currentUser?.photoUrl.toString()
+                    val updates = hashMapOf<String, Any>(
+                        "profilePicUrl" to pic
+                    )
+                    database.getReference("users").child(key).updateChildren(updates)
+                        .addOnSuccessListener {
+                        // Update was successful
+                            if (progressDialog.isShowing){
+                                progressDialog.dismiss()
+                            }
+                            goToNextActivity()
+                    }.addOnFailureListener {
+                            // Handle any errors that occurred during the update process
+
+                        }
                 }
             }
 
@@ -262,7 +269,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun goToNextActivity(){
-        val intent = Intent(this,MainActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finishAfterTransition()
     }
