@@ -12,9 +12,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import com.example.googlemap.ui.main.MainActivityViewModel
 import com.example.googlemap.R
 import com.example.googlemap.databinding.FragmentMapsBinding
+import com.example.googlemap.ui.main.MainActivityViewModel
+import com.example.googlemap.ui.main.MapTypeBottomSheet
+import com.example.googlemap.utils.Constants
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -54,6 +56,20 @@ class MapsFragment : Fragment() {
         googleMap = map
         googleMap?.uiSettings?.isMyLocationButtonEnabled = false
         googleMap?.uiSettings?.isCompassEnabled = false
+
+        viewModel.mapType.observe(viewLifecycleOwner){mapType ->
+            when(mapType){
+                Constants.MAP_NORMAL -> {
+                    googleMap?.mapType = GoogleMap.MAP_TYPE_NORMAL
+                }
+                Constants.MAP_SATELLITE -> {
+                    googleMap?.mapType = GoogleMap.MAP_TYPE_SATELLITE
+                }
+                Constants.MAP_HYBRID -> {
+                    googleMap?.mapType = GoogleMap.MAP_TYPE_HYBRID
+                }
+            }
+        }
     }
 
     override fun onCreateView(
@@ -133,6 +149,10 @@ class MapsFragment : Fragment() {
             googleMap?.moveCamera(cameraUpdate)
         }
 
+        binding.fabTile.setOnClickListener {
+            val modalBottomSheet = MapTypeBottomSheet()
+            modalBottomSheet.show(childFragmentManager, MapTypeBottomSheet.TAG)
+        }
 
     }
 

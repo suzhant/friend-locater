@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             }
         }
 
-        binding.navigationView.setCheckedItem(R.id.search)
+        binding.navigationView.setCheckedItem(R.id.explore)
         binding.navigationView.setNavigationItemSelectedListener { menuItem ->
             // Handle menu item selected
             when(menuItem.itemId){
@@ -138,8 +138,8 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                     startActivity(intent)
                 }
 
-                R.id.search -> {
-                    if (binding.navigationView.checkedItem?.itemId != R.id.search){
+                R.id.explore -> {
+                    if (binding.navigationView.checkedItem?.itemId != R.id.explore){
                         initFragment()
                     }
                 }
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     }
 
     override fun onResume() {
-        binding.navigationView.setCheckedItem(R.id.search)
+        binding.navigationView.setCheckedItem(R.id.explore)
         super.onResume()
     }
 

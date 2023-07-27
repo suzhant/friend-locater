@@ -18,5 +18,7 @@
     <color name="gray_3">#aeaeae</color>
     <color name="gray_2">#838383</color>
     <color name="gray_1">#3a3a3a</color>
-
+    <color name="royal_blue">#4169E1</color>
+    <color name="neon_blue">#1F51FF</color>
+    <color name="blue">#0000FF</color>
 </resources>

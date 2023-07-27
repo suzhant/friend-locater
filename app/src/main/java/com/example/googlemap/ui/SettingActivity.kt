@@ -6,16 +6,16 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.transition.TransitionManager
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivitySettingBinding
 import com.example.googlemap.databinding.ChangePasswordBinding
 import com.example.googlemap.databinding.InputLayoutBinding
-import com.example.googlemap.modal.UserData
-import com.google.android.material.button.MaterialButton
+import com.example.googlemap.ui.main.MainActivityViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
+import com.google.android.material.transition.MaterialFade
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -31,6 +31,7 @@ class SettingActivity : AppCompatActivity() {
     private lateinit var database: FirebaseDatabase
     private lateinit var dialog : Dialog
     private var email = ""
+    private val mainViewModel : MainActivityViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,13 +41,8 @@ class SettingActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
 
-        if (isEmailLinked()){
-            binding.txtPassAuthentication.text = "Unlink with Password authentication"
-            binding.txtChangePassword.visibility = View.VISIBLE
-        }else{
-            binding.txtPassAuthentication.text = "Link with Password authentication"
-            binding.txtChangePassword.visibility = View.GONE
-        }
+        mainViewModel.setLinkEnabled(isEmailLinked())
+
 
         binding.txtPassAuthentication.setOnClickListener {
             if (isEmailLinked()){
@@ -75,16 +71,31 @@ class SettingActivity : AppCompatActivity() {
 
         })
 
+        mainViewModel.linkEnabled.observe(this){enabled ->
+            if (enabled){
+                binding.txtPassAuthentication.text = "Unlink with Password authentication"
+                binding.txtChangePassword.visibility = View.VISIBLE
+            }else{
+                binding.txtPassAuthentication.text = "Link with Password authentication"
+                binding.txtChangePassword.visibility = View.GONE
+            }
+        }
+
     }
 
     private fun showChangePasswordDialog() {
         val builder = MaterialAlertDialogBuilder(this, R.style.AlertDialogTheme)
         val passBinding : ChangePasswordBinding = ChangePasswordBinding.inflate(LayoutInflater.from(this),binding.root,false)
+        val materialFade = MaterialFade().apply {
+            duration = 1000L
+        }
+        TransitionManager.beginDelayedTransition(binding.root, materialFade)
         builder.setTitle("Change Password")
         builder.setView(passBinding.root)
         builder.setCancelable(true)
         dialog = builder.create()
         dialog.show()
+
 
         with(passBinding){
             btnConfirm.setOnClickListener {
@@ -216,6 +227,7 @@ class SettingActivity : AppCompatActivity() {
             ?.addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
                     // Auth provider unlinked from account
+                    mainViewModel.setLinkEnabled(false)
                    Toast.makeText(applicationContext,"account unlink successful", Toast.LENGTH_SHORT).show()
                 }else{
                     Toast.makeText(applicationContext,"account unlink failed", Toast.LENGTH_SHORT).show()
@@ -232,6 +244,7 @@ class SettingActivity : AppCompatActivity() {
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
                         dialog.dismiss()
+                        mainViewModel.setLinkEnabled(true)
                         Toast.makeText(applicationContext,"Account link successful",Toast.LENGTH_SHORT).show()
                     } else {
                         dialog.dismiss()
