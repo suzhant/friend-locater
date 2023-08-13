@@ -8,9 +8,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.googlemap.listener.OnPlaceFetchedListener
 import com.example.googlemap.listener.OnRouteFetchedListener
-import com.example.googlemap.modal.DirectionResponse
-import com.example.googlemap.modal.GeoPoint
-import com.example.googlemap.modal.LocationResult
+import com.example.googlemap.model.DirectionResponse
+import com.example.googlemap.model.GeoPoint
+import com.example.googlemap.model.LocationResult
 import com.example.googlemap.repository.LocationRepository
 import com.example.googlemap.repository.MapRepository
 import com.example.googlemap.utils.Constants
@@ -20,7 +20,16 @@ import kotlinx.coroutines.launch
 class MainActivityViewModel(application: Application) : AndroidViewModel(application) {
 
     private val mapRepository : MapRepository = MapRepository()
-    val locationRepository : LocationRepository = LocationRepository(application)
+    val locationRepository : LocationRepository = LocationRepository(application, object : LocationRepository.OnLocationFetchedListener{
+        override fun onLocationFetched(location: GeoPoint) {
+            _currentLocation.postValue(location)
+        }
+
+        override fun onFailure(errorMessage: String) {
+            Log.d("error",errorMessage)
+        }
+
+    })
 
     private val _placesListLiveData : MutableLiveData<MutableList<LocationResult>> = MutableLiveData()
     val placesLiveData: LiveData<MutableList<LocationResult>> get() = _placesListLiveData
@@ -92,16 +101,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
 
     fun getDeviceLocation(){
         viewModelScope.launch(Dispatchers.IO) {
-            locationRepository.getDeviceLocation(object : LocationRepository.OnLocationFetchedListener{
-                override fun onLocationFetched(location: GeoPoint) {
-                    _currentLocation.postValue(location)
-                }
-
-                override fun onFailure(errorMessage: String) {
-                    locationRepository.startLocationUpdates()
-                }
-
-            })
+            locationRepository.getDeviceLocation()
         }
     }
 

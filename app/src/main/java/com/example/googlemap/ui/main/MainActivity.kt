@@ -7,27 +7,31 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
-import com.example.googlemap.modal.LocationResult
-import com.example.googlemap.modal.UserData
+import com.example.googlemap.model.LocationResult
+import com.example.googlemap.model.UserData
+import com.example.googlemap.services.LocationUpdateService
+import com.example.googlemap.services.LocationUpdateWorker
+import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.LoginActivity
 import com.example.googlemap.ui.SettingActivity
 import com.example.googlemap.ui.main.fragments.MapsFragment
-import com.example.googlemap.utils.PlaceSearch
 import com.example.osm.adapter.PlaceAdapter
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -60,7 +64,23 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         setHeaderView()
         initViews()
         initRecycler()
+        scheduleLocationUpdates()
     }
+
+    private fun scheduleLocationUpdates() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        // Create a OneTimeWorkRequest to trigger the Worker
+        val locationUpdateWorkRequest = OneTimeWorkRequest.Builder(LocationUpdateWorker::class.java)
+            .setConstraints(constraints)
+            .build()
+
+        val workManager = WorkManager.getInstance(applicationContext)
+        workManager.enqueue(locationUpdateWorkRequest)
+    }
+
 
     private fun initViews() {
         binding.searchView.editText.setOnEditorActionListener { _, actionId, _ ->
@@ -125,15 +145,15 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             // Handle menu item selected
             when(menuItem.itemId){
                 R.id.sign_out -> {
-                    binding.drawerLayout.close()
                     signOut()
+                    val serviceIntent = Intent(this, LocationUpdateService::class.java)
+                    stopService(serviceIntent)
                     val intent = Intent(this, LoginActivity::class.java)
                     startActivity(intent)
                     finishAfterTransition()
                 }
 
                 R.id.setting -> {
-                    binding.drawerLayout.close()
                     val intent = Intent(this, SettingActivity::class.java)
                     startActivity(intent)
                 }
@@ -142,6 +162,11 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                     if (binding.navigationView.checkedItem?.itemId != R.id.explore){
                         initFragment()
                     }
+                }
+
+                R.id.friends -> {
+                    val intent = Intent(this, FriendsActivity::class.java)
+                    startActivity(intent)
                 }
             }
             true
@@ -164,8 +189,8 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                         val name = user.userName
                         val email = user.email
                         val profilePic = user.profilePicUrl
-                        Glide.with(this@MainActivity).load(profilePic).placeholder(R.drawable.img).into(imgProfile)
-                        loadIconWithGlide(profilePic!!)
+                        Glide.with(this@MainActivity).load(profilePic ?: "").placeholder(R.drawable.img).into(imgProfile)
+                        loadIconWithGlide(profilePic ?: "")
                         txtName.text = name
                         txtEmail.text = email
                     }
@@ -188,7 +213,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             .into(object : CustomTarget<Drawable>() {
                 override fun onResourceReady(
                     resource: Drawable,
-                    transition: Transition<in Drawable>?
+                    transition: Transition<in Drawable>?,
                 ) {
                     // Set the loaded icon to the MenuItem
                     val menuItem = binding.searchBar.menu.findItem(R.id.avatar)
@@ -228,34 +253,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         }
     }
 
-//    private fun performPlaceSearch(query: String) {
-//        // Perform the search
-//        placeSearch.searchPlace(query, object : Callback {
-//            override fun onFailure(call: Call, e: IOException) {
-//                e.printStackTrace()
-//            }
-//
-//            override fun onResponse(call: Call, response: Response) {
-//                if (response.isSuccessful) {
-//                    val responseBody = response.body?.string()
-//                    val places = placeSearch.gson.fromJson<MutableList<PlaceSearch.Place>>(
-//                        responseBody,
-//                        object : TypeToken<List<PlaceSearch.Place>>() {}.type
-//                    )
-//
-//
-//                    CoroutineScope(Dispatchers.Main).launch {
-//                        adapter.setPlaces(places)
-//                    }
-//
-//                } else {
-//                    // Handle the failure case
-//                }
-//            }
-//        })
-//
-//    }
-
     private fun initRecycler() {
         val layoutManager = LinearLayoutManager(this)
         binding.recyclerSearch.layoutManager = layoutManager
@@ -269,14 +266,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         binding.searchBar.text = place.displayName
         isEditMode = false
         binding.searchView.hide()
-    }
-
-
-    private fun hideKeyboard(view : View){
-        // Inside your activity or fragment
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(view.windowToken, 0)
-
     }
 
     override fun onResume() {

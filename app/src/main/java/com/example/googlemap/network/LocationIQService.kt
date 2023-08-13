@@ -1,6 +1,6 @@
-package com.example.googlemap.services
+package com.example.googlemap.network
 
-import com.example.googlemap.modal.LocationResult
+import com.example.googlemap.model.LocationResult
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Query

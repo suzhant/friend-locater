@@ -21,4 +21,5 @@
     <color name="royal_blue">#4169E1</color>
     <color name="neon_blue">#1F51FF</color>
     <color name="blue">#0000FF</color>
+    <color name="gray_100">#EFEFEF</color>
 </resources>

@@ -1,6 +1,6 @@
 package com.example.googlemap.listener
 
-import com.example.googlemap.modal.DirectionResponse
+import com.example.googlemap.model.DirectionResponse
 
 interface OnRouteFetchedListener {
 

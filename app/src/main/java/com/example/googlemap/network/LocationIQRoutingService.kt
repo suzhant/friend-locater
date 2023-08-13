@@ -1,11 +1,10 @@
-package com.example.googlemap.services
+package com.example.googlemap.network
 
-import com.example.googlemap.modal.DirectionResponse
+import com.example.googlemap.model.DirectionResponse
 import retrofit2.Call
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
-import retrofit2.http.QueryMap
 
 
 interface LocationIQRoutingService {

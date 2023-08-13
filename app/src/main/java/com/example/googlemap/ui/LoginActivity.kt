@@ -1,6 +1,8 @@
 package com.example.googlemap.ui
 
+import android.app.Activity
 import android.app.Dialog
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.IntentSender
 import android.os.Bundle
@@ -11,10 +13,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityLoginBinding
-import com.example.googlemap.modal.UserData
+import com.example.googlemap.model.UserData
 import com.example.googlemap.ui.main.MainActivity
 import com.example.googlemap.utils.ProgressHelper
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
+import com.google.android.gms.auth.api.identity.GetSignInIntentRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.identity.SignInClient
 import com.google.android.gms.common.api.ApiException
@@ -56,7 +59,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         binding.btnGoogleLogin.setOnClickListener {
-            loginWithGoogle()
+            googleSignIn()
         }
 
         binding.btnLogin.setOnClickListener {
@@ -112,6 +115,29 @@ class LoginActivity : AppCompatActivity() {
             }
     }
 
+    private fun googleSignIn() {
+        val request = GetSignInIntentRequest.builder()
+            .setServerClientId(getString(R.string.default_web_client_id))
+            .build()
+        Identity.getSignInClient(this)
+            .getSignInIntent(request)
+            .addOnSuccessListener { result: PendingIntent ->
+                try {
+                    val intentSenderRequest = IntentSenderRequest.Builder(result.intentSender).build()
+                    googleIntentResultLauncher.launch(intentSenderRequest)
+                } catch (e: IntentSender.SendIntentException) {
+                    Log.e(TAG, "Google Sign-in failed")
+                }
+            }
+            .addOnFailureListener { e: Exception? ->
+                Log.e(
+                    TAG,
+                    "Google Sign-in failed",
+                    e
+                )
+            }
+    }
+
     private fun loginWithGoogle() {
         oneTapClient = Identity.getSignInClient(this)
         signInRequest = BeginSignInRequest.builder()
@@ -153,10 +179,11 @@ class LoginActivity : AppCompatActivity() {
 
     private val googleIntentResultLauncher =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-            if (result != null) {
+            if (result.resultCode == Activity.RESULT_OK && result.data != null) {
                 val data = result.data
                 try {
-                    val credential = oneTapClient.getSignInCredentialFromIntent(data)
+                    val credential = Identity.getSignInClient(this)
+                        .getSignInCredentialFromIntent(data)
                     val idToken = credential.googleIdToken
                     val password = credential.password
 

@@ -1,8 +1,11 @@
 package com.example.googlemap.ui.main.fragments
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.IntentSender
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.location.LocationManager
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -10,13 +13,28 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
+import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.example.googlemap.R
 import com.example.googlemap.databinding.FragmentMapsBinding
+import com.example.googlemap.model.GeoPoint
+import com.example.googlemap.model.UserLocation
+import com.example.googlemap.services.LocationUploadWorker
 import com.example.googlemap.ui.main.MainActivityViewModel
 import com.example.googlemap.ui.main.MapTypeBottomSheet
 import com.example.googlemap.utils.Constants
+import com.example.googlemap.utils.Constants.KEY_LATITUDE
+import com.example.googlemap.utils.Constants.KEY_LONGITUDE
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -26,15 +44,23 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.maps.android.PolyUtil
 
-class MapsFragment : Fragment() {
+
+class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
 
     private val REQUEST_CHECK_SETTINGS: Int = 123
     private val binding: FragmentMapsBinding by lazy {
@@ -51,12 +77,17 @@ class MapsFragment : Fragment() {
     private var polyline: Polyline? = null
     private val POLYLINE_STROKE_WIDTH_PX = 12
     private lateinit var locationRequest: LocationRequest
+    private lateinit var auth: FirebaseAuth
+    private lateinit var database: FirebaseDatabase
+    private var oneTimeMarkerAddition = false
+    private var friendMarkerPosition : Marker ?= null
 
+    @SuppressLint("PotentialBehaviorOverride")
     private val callback = OnMapReadyCallback { map ->
         googleMap = map
         googleMap?.uiSettings?.isMyLocationButtonEnabled = false
         googleMap?.uiSettings?.isCompassEnabled = false
-
+        googleMap?.setOnMarkerClickListener(this)
         viewModel.mapType.observe(viewLifecycleOwner){mapType ->
             when(mapType){
                 Constants.MAP_NORMAL -> {
@@ -86,6 +117,8 @@ class MapsFragment : Fragment() {
         mapFragment = (childFragmentManager.findFragmentById(R.id.map) as SupportMapFragment?)!!
         mapFragment.getMapAsync(callback)
 
+        auth = FirebaseAuth.getInstance()
+        database = FirebaseDatabase.getInstance()
         locationRequest = createLocationRequest()
         checkGps()
 
@@ -96,8 +129,9 @@ class MapsFragment : Fragment() {
             val currentLocation = viewModel.currentLocation.value
             val startLongitude = currentLocation?.longitude
             val startLatitude = currentLocation?.latitude
-            val coordinates = "${startLongitude},${startLatitude};${longitude},${latitude}"
-            viewModel.getRoute(coordinates)
+            val route = GeoPoint()
+            route.setCoordinate(startLongitude!!,startLatitude!!,longitude,latitude)
+            viewModel.getRoute(route.getCoordinate())
             googleMap?.addMarker(MarkerOptions().position(position).title(data.displayName))
             val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
             googleMap?.animateCamera(cameraUpdate,duration,null)
@@ -147,12 +181,116 @@ class MapsFragment : Fragment() {
             val position = LatLng(latitude, longitude)
             val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
             googleMap?.moveCamera(cameraUpdate)
+         //   uploadLocation(position)
         }
 
         binding.fabTile.setOnClickListener {
             val modalBottomSheet = MapTypeBottomSheet()
             modalBottomSheet.show(childFragmentManager, MapTypeBottomSheet.TAG)
         }
+
+        populateUsers()
+    }
+
+    private fun populateUsers(){
+        database.getReference("location").addValueEventListener(object :ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()){
+                    for (dataSnap in snapshot.children){
+                        val location = dataSnap.getValue(UserLocation::class.java)
+                        val id = location?.id
+                        val lat = location?.latitude
+                        val long = location?.longitude
+                        if (id!=auth.uid && activity!=null){
+                            database.getReference("users").child(id!!).addListenerForSingleValueEvent(object : ValueEventListener{
+                                override fun onDataChange(snapshot: DataSnapshot) {
+                                    if (snapshot.exists()){
+                                        val pic = snapshot.child("profilePicUrl").getValue(String::class.java) ?: ""
+                                        val name = snapshot.child("userName").getValue(String::class.java)
+                                        loadIconWithGlide(pic,lat!!,long!!,name.toString())
+                                    }
+                                }
+
+                                override fun onCancelled(error: DatabaseError) {
+                                }
+
+                            })
+                        }
+
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+            }
+
+        })
+
+
+    }
+
+    private fun loadIconWithGlide(iconUrl: String,latitude : Double, longitude : Double,name: String) {
+        Glide.with(this)
+            .asBitmap()
+            .load(iconUrl)
+            .placeholder(R.drawable.img)
+            .circleCrop()
+            .into(object : CustomTarget<Bitmap>() {
+                override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
+                    if (!oneTimeMarkerAddition){
+                        val markerOptions = MarkerOptions()
+                            .position(LatLng(latitude, longitude))
+                            .title(name)
+                        friendMarkerPosition = googleMap?.addMarker(markerOptions)
+                        val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap)
+                        friendMarkerPosition?.setIcon(bitmapDescriptor)
+                        oneTimeMarkerAddition = true
+                        return
+                    }
+                    friendMarkerPosition?.position = LatLng(latitude,longitude)
+                }
+
+                override fun onLoadCleared(placeholder: Drawable?) {
+                    // Called when the resource is cleared.
+                    // You can optionally handle this case if needed.
+                }
+
+                override fun onLoadFailed(errorDrawable: Drawable?) {
+                    // Called when the image failed to load.
+                    // You can handle this case if needed.
+                    if (!oneTimeMarkerAddition){
+                        val markerOptions = MarkerOptions()
+                            .position(LatLng(latitude, longitude))
+                            .title(name)
+                        friendMarkerPosition = googleMap?.addMarker(markerOptions)
+                        val drawable = ContextCompat.getDrawable(requireContext(),R.drawable.img)
+                        val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(drawable!!.toBitmap(100 ,100))
+                        friendMarkerPosition?.setIcon(bitmapDescriptor)
+                        oneTimeMarkerAddition = true
+                        return
+                    }
+                    friendMarkerPosition?.position = LatLng(latitude,longitude)
+                }
+
+            })
+    }
+
+    private fun uploadLocation(position: LatLng) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+
+        val inputData: Data = Data.Builder()
+            .putDouble(KEY_LATITUDE, position.latitude)
+            .putDouble(KEY_LONGITUDE, position.longitude)
+            .build()
+
+        val uploadWork: OneTimeWorkRequest =
+            OneTimeWorkRequest.Builder(LocationUploadWorker::class.java).setConstraints(constraints)
+                .setInputData(inputData).build()
+
+        WorkManager.getInstance(requireContext().applicationContext).enqueue(uploadWork)
 
     }
 
@@ -224,6 +362,22 @@ class MapsFragment : Fragment() {
     override fun onLowMemory() {
         super.onLowMemory()
         mapFragment.onLowMemory()
+    }
+
+    override fun onMarkerClick(marker: Marker): Boolean {
+        // Get the latitude and longitude of the clicked marker
+        val markerLatLng = marker.position
+        val markerLatitude = markerLatLng.latitude
+        val markerLongitude = markerLatLng.longitude
+
+        val currentLocation = viewModel.currentLocation.value
+        val startLongitude = currentLocation?.longitude
+        val startLatitude = currentLocation?.latitude
+        val coordinates = "${startLongitude},${startLatitude};${markerLongitude},${markerLatitude}"
+        viewModel.getRoute(coordinates)
+        // Return false to allow the default behavior (opening the info window, if available)
+        // Return true to prevent the default behavior from happening
+        return false
     }
 
 }

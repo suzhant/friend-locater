@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.googlemap.databinding.ActivitySignUpBinding
-import com.example.googlemap.modal.UserData
+import com.example.googlemap.model.UserData
 import com.example.googlemap.ui.main.MainActivity
 import com.example.googlemap.utils.ProgressHelper
 import com.google.firebase.auth.FirebaseAuth
@@ -105,12 +105,6 @@ class SignUpActivity : AppCompatActivity() {
                     ).show()
                 }
             }
-    }
-
-    private fun goToNextActivity(){
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
-        finishAfterTransition()
     }
 
     private fun isEmailValid(email: String): Boolean {

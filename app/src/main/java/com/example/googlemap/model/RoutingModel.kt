@@ -1,4 +1,4 @@
-package com.example.googlemap.modal
+package com.example.googlemap.model
 
 import com.google.gson.annotations.SerializedName
 

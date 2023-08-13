@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/friend_nav_graph"
+    app:startDestination="@id/friendFragment">
+
+    <fragment
+        android:id="@+id/friendFragment"
+        android:name="com.example.googlemap.ui.friend.fragment.FriendFragment"
+        android:label="fragment_friend"
+        tools:layout="@layout/fragment_friend" >
+        <action
+            android:id="@+id/action_friendFragment_to_searchFragment"
+            app:destination="@id/searchFragment" />
+        <action
+            android:id="@+id/action_friendFragment_to_friendRequestFragment"
+            app:destination="@id/friendRequestFragment" />
+        <action
+            android:id="@+id/action_friendFragment_to_friendListFragment"
+            app:destination="@id/friendListFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/searchFragment"
+        android:name="com.example.googlemap.ui.friend.fragment.SearchFragment"
+        android:label="fragment_search"
+        tools:layout="@layout/fragment_search" >
+        <action
+            android:id="@+id/action_searchFragment_to_profileFragment"
+            app:destination="@id/profileFragment" />
+        <action
+            android:id="@+id/action_searchFragment_to_searchBottomSheetDialog"
+            app:destination="@id/searchBottomSheetDialog" />
+    </fragment>
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.example.googlemap.ui.friend.fragment.ProfileFragment"
+        android:label="fragment_profile"
+        tools:layout="@layout/fragment_profile" />
+    <fragment
+        android:id="@+id/friendRequestFragment"
+        android:name="com.example.googlemap.ui.friend.fragment.FriendRequestFragment"
+        android:label="fragment_friend_request"
+        tools:layout="@layout/fragment_friend_request" />
+    <fragment
+        android:id="@+id/friendListFragment"
+        android:name="com.example.googlemap.ui.friend.fragment.FriendListFragment"
+        android:label="fragment_friend_list"
+        tools:layout="@layout/fragment_friend_list" />
+    <dialog
+        android:id="@+id/searchBottomSheetDialog"
+        android:name="com.example.googlemap.ui.friend.dialog.SearchBottomSheetDialog"
+        android:label="fragment_search_bottom_sheet_dialog"
+        tools:layout="@layout/fragment_search_bottom_sheet_dialog" >
+        <argument
+            android:name="userData"
+            app:argType="com.example.googlemap.model.UserData" />
+    </dialog>
+</navigation>

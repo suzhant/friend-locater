@@ -9,14 +9,21 @@ android:title="Main">
     <item
         android:id="@+id/explore"
         android:icon="@drawable/baseline_explore_24"
-        android:title="Explore"
+        android:title="@string/explore"
+        android:checkable="true"
+        app:showAsAction="ifRoom"/>
+
+    <item
+        android:id="@+id/friends"
+        android:icon="@drawable/baseline_group_24"
+        android:title="@string/friends"
         android:checkable="true"
         app:showAsAction="ifRoom"/>
 </menu>
 </item>
 <item
 android:id="@+id/labels_item"
-    android:title="Profile">
+    android:title="@string/profile">
 <menu>
     <item
         android:id="@+id/setting"
@@ -30,7 +37,7 @@ android:id="@+id/labels_item"
 <item
     android:id="@+id/sign_out"
     android:icon="@drawable/baseline_arrow_back_24"
-    android:title="Sign out"
+    android:title="@string/sign_out"
     android:checkable="true"
     app:showAsAction="ifRoom"/>
 </menu>

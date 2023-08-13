@@ -3,11 +3,11 @@ package com.example.googlemap.repository
 import android.util.Log
 import com.example.googlemap.listener.OnPlaceFetchedListener
 import com.example.googlemap.listener.OnRouteFetchedListener
-import com.example.googlemap.modal.DirectionResponse
-import com.example.googlemap.modal.LocationResult
-import com.example.googlemap.services.ApiClient
-import com.example.googlemap.services.LocationIQRoutingService
-import com.example.googlemap.services.LocationIQService
+import com.example.googlemap.model.DirectionResponse
+import com.example.googlemap.model.LocationResult
+import com.example.googlemap.network.ApiClient
+import com.example.googlemap.network.LocationIQRoutingService
+import com.example.googlemap.network.LocationIQService
 import com.example.googlemap.utils.Constants
 import retrofit2.Call
 import retrofit2.Callback

@@ -3,9 +3,10 @@ package com.example.googlemap.repository
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
-import com.example.googlemap.modal.GeoPoint
+import com.example.googlemap.model.GeoPoint
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
@@ -14,7 +15,7 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 
-class LocationRepository(private val context:Context) {
+class LocationRepository(private val context:Context, private val listener: OnLocationFetchedListener) {
 
     private var fusedLocationProviderClient : FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
     private var locationRequest: LocationRequest = createLocationRequest()
@@ -26,14 +27,14 @@ class LocationRepository(private val context:Context) {
 
     private var locationCallback: LocationCallback  = object : LocationCallback() {
 
-        private var listener : OnLocationFetchedListener ?= null
         override fun onLocationResult(locationResult: LocationResult) {
             locationResult.lastLocation?.let { location ->
                 // Use the location data here
                 val latitude = location.latitude
                 val longitude = location.longitude
                 val currentLocation = GeoPoint(latitude, longitude)
-                listener?.onLocationFetched(currentLocation)
+                listener.onLocationFetched(currentLocation)
+                stopLocationUpdates()
             }
         }
 
@@ -43,7 +44,7 @@ class LocationRepository(private val context:Context) {
         }
     }
 
-     fun getDeviceLocation(listener : OnLocationFetchedListener) {
+     fun getDeviceLocation() {
         try {
             fusedLocationProviderClient.lastLocation
                 .addOnSuccessListener { location ->
@@ -56,6 +57,7 @@ class LocationRepository(private val context:Context) {
                     } else {
                         // Location is null (no last known location available)
                         // You might want to request location updates instead
+                        startLocationUpdates()
                         listener.onFailure("Failed to fetch data")
                     }
                 }
@@ -68,7 +70,7 @@ class LocationRepository(private val context:Context) {
         }
     }
 
-     fun startLocationUpdates() {
+     private fun startLocationUpdates() {
         if (ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -77,12 +79,10 @@ class LocationRepository(private val context:Context) {
             fusedLocationProviderClient.requestLocationUpdates(
                 locationRequest,
                 locationCallback,
-                null
+                Looper.getMainLooper()
             )
         }
     }
-
-
 
     private fun createLocationRequest(): LocationRequest {
         return LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000)

@@ -6,11 +6,13 @@ import android.content.IntentSender.SendIntentException
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.googlemap.R
@@ -26,10 +28,20 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 class StartScreenActivity : AppCompatActivity() {
 
     private val REQUEST_CHECK_SETTINGS = 102
+   private var permissions = emptyArray<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash_screen)
+         permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.POST_NOTIFICATIONS
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        }
         checkGps()
     }
 
@@ -42,9 +54,31 @@ class StartScreenActivity : AppCompatActivity() {
     }
 
     private fun checkPermission() {
-        val permissions = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION
-        )
+        val notificationPermission = ContextCompat.checkSelfPermission(
+            this,
+            permissions[2]
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+            if (!notificationPermission){
+                requestNotificationPermissionLauncher.launch(
+                    permissions[2]
+                )
+                return
+            }
+        }
+
+        if (!checkLocationPermission()) {
+            requestPermissionLauncher.launch(
+                permissions
+            )
+            return
+        }
+
+        goToNextActivity()
+    }
+
+    private fun checkLocationPermission() : Boolean{
         val finePermission = ContextCompat.checkSelfPermission(
             this,
             permissions[0]
@@ -55,15 +89,24 @@ class StartScreenActivity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!finePermission || !coarsePermission) {
-            requestPermissionLauncher.launch(
-               permissions
-            )
-            return
+            return false
         }
-
-        goToNextActivity()
+        return true
     }
 
+    private val requestNotificationPermissionLauncher= registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted){
+            showDialog()
+        }else{
+            if (!checkLocationPermission()) {
+                requestPermissionLauncher.launch(
+                    permissions
+                )
+            }
+        }
+    }
     private val requestPermissionLauncher= registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -72,7 +115,7 @@ class StartScreenActivity : AppCompatActivity() {
             val isGranted = it.value
             val permissionName = it.key
             if (permissionName == Manifest.permission.ACCESS_FINE_LOCATION || permissionName == Manifest.permission.ACCESS_COARSE_LOCATION) {
-                locationGranted = isGranted
+               locationGranted = isGranted
             }
         }
         if (!locationGranted) {
@@ -80,7 +123,6 @@ class StartScreenActivity : AppCompatActivity() {
         }else{
             goToNextActivity()
         }
-
     }
 
     private fun showDialog() {

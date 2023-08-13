@@ -7,7 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.example.googlemap.databinding.WidgetPlaceBinding
 import com.example.googlemap.listener.PlaceListener
-import com.example.googlemap.modal.LocationResult
+import com.example.googlemap.model.LocationResult
 
 class PlaceAdapter(private val placeListener: PlaceListener) : RecyclerView.Adapter<PlaceAdapter.PlaceViewHolder>() {
 

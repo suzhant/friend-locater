@@ -6,4 +6,6 @@ object Constants {
     const val MAP_NORMAL = 1
     const val MAP_SATELLITE = 2
     const val MAP_HYBRID = 3
+    const val KEY_LATITUDE = "key_latitude"
+    const val KEY_LONGITUDE = "key_longitude"
 }
