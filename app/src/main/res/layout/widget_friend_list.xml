@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    android:layout_height="wrap_content">
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/imgProfile"
@@ -20,21 +20,29 @@
 
     <TextView
         android:id="@+id/txt_name"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:layout_marginTop="8dp"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:layout_marginEnd="8dp"
         android:text="Sushant Shrestha"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        app:layout_constraintEnd_toStartOf="@+id/img_more"
         app:layout_constraintStart_toEndOf="@+id/imgProfile"
         app:layout_constraintTop_toTopOf="@+id/imgProfile" />
 
     <TextView
         android:id="@+id/txt_email"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        android:maxLines="1"
+        android:ellipsize="end"
         android:text="sushant@gmail.com"
+        app:layout_constraintEnd_toStartOf="@+id/img_more"
         app:layout_constraintStart_toStartOf="@+id/txt_name"
         app:layout_constraintTop_toBottomOf="@+id/txt_name" />
 
@@ -43,8 +51,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
-        android:padding="10dp"
         android:background="@drawable/ripple_effect"
+        android:padding="10dp"
         android:src="@drawable/baseline_more_horiz_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
