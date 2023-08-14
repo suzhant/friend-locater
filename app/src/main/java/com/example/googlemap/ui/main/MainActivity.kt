@@ -28,9 +28,9 @@ import com.example.googlemap.model.LocationResult
 import com.example.googlemap.model.UserData
 import com.example.googlemap.services.LocationUpdateService
 import com.example.googlemap.services.LocationUpdateWorker
-import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.LoginActivity
 import com.example.googlemap.ui.SettingActivity
+import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.main.fragments.MapsFragment
 import com.example.osm.adapter.PlaceAdapter
 import com.google.firebase.auth.FirebaseAuth
@@ -80,7 +80,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         val workManager = WorkManager.getInstance(applicationContext)
         workManager.enqueue(locationUpdateWorkRequest)
     }
-
 
     private fun initViews() {
         binding.searchView.editText.setOnEditorActionListener { _, actionId, _ ->
@@ -138,6 +137,10 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             } else {
                 binding.drawerLayout.openDrawer(GravityCompat.START)
             }
+        }
+
+        binding.searchBar.menu.findItem(R.id.notification).actionView?.setOnClickListener {
+
         }
 
         binding.navigationView.setCheckedItem(R.id.explore)
