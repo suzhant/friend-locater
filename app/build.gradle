@@ -10,12 +10,12 @@ plugins {
 
 android {
     namespace 'com.example.googlemap'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.example.googlemap"
         minSdk 24
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -39,6 +39,9 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+    }
 
 }
 
@@ -49,17 +52,22 @@ dependencies {
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.android.gms:play-services-maps:18.1.0'
-    implementation 'com.google.firebase:firebase-auth:22.1.0'
+    implementation 'com.google.firebase:firebase-auth:22.1.1'
     implementation 'com.google.android.gms:play-services-auth:20.6.0'
     implementation 'com.google.firebase:firebase-database-ktx:20.2.2'
-    implementation 'androidx.navigation:navigation-fragment-ktx:2.6.0'
-    implementation 'androidx.navigation:navigation-ui-ktx:2.6.0'
+    implementation 'androidx.navigation:navigation-fragment-ktx:2.7.0'
+    implementation 'androidx.navigation:navigation-ui-ktx:2.7.0'
+    implementation 'com.android.volley:volley:1.2.1'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'com.google.firebase:firebase-messaging-ktx:23.2.1'
+    implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.19.0'
 
-    implementation 'com.squareup.okhttp3:okhttp:4.9.1'
-    implementation 'com.google.code.gson:gson:2.8.9'
+
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+    implementation 'com.google.code.gson:gson:2.9.0'
 
     //lifecycle
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1'

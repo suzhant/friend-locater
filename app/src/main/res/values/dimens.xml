@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="float_btn_sm">40dp</dimen>
+    <dimen name="float_btn_md">44dp</dimen>
+    <dimen name="float_btn_lg">50dp</dimen>
+</resources>

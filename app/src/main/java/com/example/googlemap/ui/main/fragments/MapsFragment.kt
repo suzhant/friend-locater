@@ -2,21 +2,30 @@ package com.example.googlemap.ui.main.fragments
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.location.LocationManager
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.view.GravityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.NetworkType
@@ -28,13 +37,20 @@ import com.bumptech.glide.request.transition.Transition
 import com.example.googlemap.R
 import com.example.googlemap.databinding.FragmentMapsBinding
 import com.example.googlemap.model.GeoPoint
+import com.example.googlemap.model.LocationResult
+import com.example.googlemap.model.UserData
 import com.example.googlemap.model.UserLocation
+import com.example.googlemap.services.LocationUpdateService
 import com.example.googlemap.services.LocationUploadWorker
+import com.example.googlemap.ui.LoginActivity
+import com.example.googlemap.ui.SettingActivity
+import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.main.MainActivityViewModel
-import com.example.googlemap.ui.main.MapTypeBottomSheet
+import com.example.googlemap.ui.main.dialog.MapTypeBottomSheet
 import com.example.googlemap.utils.Constants
 import com.example.googlemap.utils.Constants.KEY_LATITUDE
 import com.example.googlemap.utils.Constants.KEY_LONGITUDE
+import com.example.osm.adapter.PlaceAdapter
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -185,8 +201,11 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
         }
 
         binding.fabTile.setOnClickListener {
-            val modalBottomSheet = MapTypeBottomSheet()
-            modalBottomSheet.show(childFragmentManager, MapTypeBottomSheet.TAG)
+            findNavController().navigate(R.id.action_mapsFragment_to_mapTypeBottomSheet)
+        }
+
+        binding.fabFriend.setOnClickListener{
+            findNavController().navigate(R.id.action_mapsFragment_to_friendBottomSheet)
         }
 
         populateUsers()

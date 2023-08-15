@@ -22,4 +22,5 @@
     <color name="neon_blue">#1F51FF</color>
     <color name="blue">#0000FF</color>
     <color name="gray_100">#EFEFEF</color>
+    <color name="active_green">#6EC531</color>
 </resources>

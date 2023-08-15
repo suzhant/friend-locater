@@ -7,12 +7,17 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
+import android.view.MenuItem
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.onNavDestinationSelected
+import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.Constraints
 import androidx.work.NetworkType
@@ -31,13 +36,17 @@ import com.example.googlemap.services.LocationUpdateWorker
 import com.example.googlemap.ui.LoginActivity
 import com.example.googlemap.ui.SettingActivity
 import com.example.googlemap.ui.friend.FriendsActivity
-import com.example.googlemap.ui.main.fragments.MapsFragment
 import com.example.osm.adapter.PlaceAdapter
+import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.messaging.FirebaseMessaging
 
 
 class MainActivity : AppCompatActivity(), PlaceListener {
@@ -53,6 +62,9 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private var isEditMode = true
     private var auth : FirebaseAuth ?= null
     private lateinit var database: FirebaseDatabase
+    private lateinit var statusRef : DatabaseReference
+    private lateinit var infoConnected : DatabaseReference
+    private lateinit var eventListener: ValueEventListener
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,11 +72,56 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         setContentView(binding.root)
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
-        initFragment()
+
+        manageConnection()
+        linkDrawerLayout()
         setHeaderView()
         initViews()
         initRecycler()
-        scheduleLocationUpdates()
+    //    scheduleLocationUpdates()
+
+        FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                Log.w("firebaseMessage", "Fetching FCM registration token failed", task.exception)
+                return@OnCompleteListener
+            }
+            // Get new FCM registration token
+            val token = task.result
+            val update = mapOf<String,Any>(
+                "token" to token
+            )
+            database.getReference("Token").child(auth?.uid!!).updateChildren(update)
+        })
+
+    }
+
+    private fun manageConnection() {
+        statusRef = database.reference.child("Connection").child(auth!!.uid!!)
+        val status: DatabaseReference = statusRef.child("Status")
+        val lastOnlineRef: DatabaseReference = statusRef.child("lastOnline")
+        infoConnected = database.getReference(".info/connected")
+        eventListener = infoConnected.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val connected = snapshot.getValue(Boolean::class.java)!!
+                if (connected) {
+                    status.setValue("online")
+                    lastOnlineRef.setValue(ServerValue.TIMESTAMP)
+                } else {
+                    status.onDisconnect().setValue("offline")
+                    lastOnlineRef.onDisconnect().setValue(ServerValue.TIMESTAMP)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun linkDrawerLayout() {
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
+        findViewById<NavigationView>(R.id.navigation_view)
+            .setupWithNavController(navController)
     }
 
     private fun scheduleLocationUpdates() {
@@ -81,15 +138,29 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         workManager.enqueue(locationUpdateWorkRequest)
     }
 
+
+//    private fun initFragment() {
+//        // Get the FragmentManager and start a transaction
+//        val fragmentManager = supportFragmentManager
+//        val fragmentTransaction = fragmentManager.beginTransaction()
+//        val fragment = MapsFragment()
+//
+//        // Replace the contents of the fragment container with your fragment
+//        fragmentTransaction.replace(binding.fragmentContainer.id, fragment)
+//
+//        // Commit the transaction
+//        fragmentTransaction.commit()
+//    }
+
+
+
     private fun initViews() {
         binding.searchView.editText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 val query = binding.searchView.editText.text.toString()
-                //  performPlaceSearch(query)
                 if (query.isNotEmpty()){
                     viewModel.fetchPlaces(query)
                 }
-             //   searchLocation(query)
                 return@setOnEditorActionListener true
             }
             return@setOnEditorActionListener false
@@ -114,11 +185,9 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                 val query = s.toString().trim()
                 searchRunnable = Runnable {
                     if (isEditMode){
-                        //  performPlaceSearch(query)
                         if (query.isNotEmpty()){
                             viewModel.fetchPlaces(query)
                         }
-                     //   searchLocation(query)
                     }
                 }
                 searchHandler.postDelayed(searchRunnable!!, searchDelayMillis)
@@ -163,7 +232,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
 
                 R.id.explore -> {
                     if (binding.navigationView.checkedItem?.itemId != R.id.explore){
-                        initFragment()
+                        //    initFragment()
                     }
                 }
 
@@ -234,18 +303,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     }
 
 
-    private fun initFragment() {
-        // Get the FragmentManager and start a transaction
-        val fragmentManager = supportFragmentManager
-        val fragmentTransaction = fragmentManager.beginTransaction()
-        val fragment = MapsFragment()
-
-        // Replace the contents of the fragment container with your fragment
-        fragmentTransaction.replace(binding.fragmentContainer.id, fragment)
-
-        // Commit the transaction
-        fragmentTransaction.commit()
-    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -277,4 +334,10 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     }
 
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
+        return item.onNavDestinationSelected(navController) || super.onOptionsItemSelected(item)
+    }
 }

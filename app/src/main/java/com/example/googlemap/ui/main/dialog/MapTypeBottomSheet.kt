@@ -1,4 +1,4 @@
-package com.example.googlemap.ui.main
+package com.example.googlemap.ui.main.dialog
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import com.example.googlemap.databinding.FragmentMapTypeBottomSheetBinding
+import com.example.googlemap.ui.main.MainActivityViewModel
 import com.example.googlemap.utils.Constants
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment

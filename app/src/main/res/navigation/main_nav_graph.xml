@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/mapsFragment">
+
+    <fragment
+        android:id="@+id/mapsFragment"
+        android:name="com.example.googlemap.ui.main.fragments.MapsFragment"
+        android:label="fragment_maps"
+        tools:layout="@layout/fragment_maps" >
+        <action
+            android:id="@+id/action_mapsFragment_to_mapTypeBottomSheet"
+            app:destination="@id/mapTypeBottomSheet" />
+        <action
+            android:id="@+id/action_mapsFragment_to_friendBottomSheet"
+            app:destination="@id/friendBottomSheet" />
+    </fragment>
+
+    <dialog
+        android:id="@+id/mapTypeBottomSheet"
+        android:name="com.example.googlemap.ui.main.dialog.MapTypeBottomSheet"
+        android:label="fragment_map_type_bottom_sheet"
+        tools:layout="@layout/fragment_map_type_bottom_sheet" />
+    <dialog
+        android:id="@+id/friendBottomSheet"
+        android:name="com.example.googlemap.ui.main.dialog.FriendBottomSheet"
+        android:label="fragment_bottom_sheet_friend"
+        tools:layout="@layout/fragment_bottom_sheet_friend" />
+
+</navigation>

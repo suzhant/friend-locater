@@ -14,6 +14,7 @@ import com.example.googlemap.databinding.FragmentFriendListBinding
 import com.example.googlemap.model.Friend
 import com.example.googlemap.model.enums.FriendStatus
 import com.example.googlemap.model.enums.RequestAction
+import com.google.android.material.transition.MaterialElevationScale
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
