@@ -110,18 +110,22 @@ class StartScreenActivity : AppCompatActivity() {
     private val requestPermissionLauncher= registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        var locationGranted = false
+        var fineGranted = false
+        var coarseGranted = false
         permissions.entries.forEach {
             val isGranted = it.value
             val permissionName = it.key
-            if (permissionName == Manifest.permission.ACCESS_FINE_LOCATION || permissionName == Manifest.permission.ACCESS_COARSE_LOCATION) {
-               locationGranted = isGranted
+            if (permissionName == Manifest.permission.ACCESS_FINE_LOCATION) {
+               fineGranted = isGranted
+            }
+            if (permissionName == Manifest.permission.ACCESS_COARSE_LOCATION) {
+                coarseGranted = isGranted
             }
         }
-        if (!locationGranted) {
-            showDialog()
-        }else{
+        if (fineGranted || coarseGranted) {
             goToNextActivity()
+        }else{
+            showDialog()
         }
     }
 

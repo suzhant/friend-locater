@@ -19,10 +19,6 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.onNavDestinationSelected
 import androidx.navigation.ui.setupWithNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.work.Constraints
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequest
-import androidx.work.WorkManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
@@ -32,10 +28,10 @@ import com.example.googlemap.listener.PlaceListener
 import com.example.googlemap.model.LocationResult
 import com.example.googlemap.model.UserData
 import com.example.googlemap.services.LocationUpdateService
-import com.example.googlemap.services.LocationUpdateWorker
 import com.example.googlemap.ui.LoginActivity
 import com.example.googlemap.ui.SettingActivity
 import com.example.googlemap.ui.friend.FriendsActivity
+import com.example.googlemap.ui.friend.SearchViewModel
 import com.example.osm.adapter.PlaceAdapter
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.material.navigation.NavigationView
@@ -54,6 +50,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private val REQUEST_CHECK_SETTINGS: Int = 123
     private lateinit var binding: ActivityMainBinding
     private val viewModel : MainActivityViewModel by viewModels()
+    private val searchViewModel : SearchViewModel by viewModels()
     private lateinit var adapter: PlaceAdapter
     private val searchDelayMillis = 400L
     private val searchHandler = Handler(Looper.getMainLooper())
@@ -62,7 +59,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private var isEditMode = true
     private var auth : FirebaseAuth ?= null
     private lateinit var database: FirebaseDatabase
-    private lateinit var statusRef : DatabaseReference
     private lateinit var infoConnected : DatabaseReference
     private lateinit var eventListener: ValueEventListener
 
@@ -78,7 +74,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         setHeaderView()
         initViews()
         initRecycler()
-    //    scheduleLocationUpdates()
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
             if (!task.isSuccessful) {
@@ -93,10 +88,25 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             database.getReference("Token").child(auth?.uid!!).updateChildren(update)
         })
 
+        database.getReference("users").child(auth?.uid!!).addListenerForSingleValueEvent(object : ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()){
+                    val user = snapshot.getValue(UserData::class.java)
+                    user?.let {
+                        searchViewModel.setUserData(user)
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+
+            }
+        })
+
     }
 
     private fun manageConnection() {
-        statusRef = database.reference.child("Connection").child(auth!!.uid!!)
+        val statusRef = database.reference.child("Connection").child(auth!!.uid!!)
         val status: DatabaseReference = statusRef.child("Status")
         val lastOnlineRef: DatabaseReference = statusRef.child("lastOnline")
         infoConnected = database.getReference(".info/connected")
@@ -122,20 +132,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         val navController = navHostFragment.navController
         findViewById<NavigationView>(R.id.navigation_view)
             .setupWithNavController(navController)
-    }
-
-    private fun scheduleLocationUpdates() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        // Create a OneTimeWorkRequest to trigger the Worker
-        val locationUpdateWorkRequest = OneTimeWorkRequest.Builder(LocationUpdateWorker::class.java)
-            .setConstraints(constraints)
-            .build()
-
-        val workManager = WorkManager.getInstance(applicationContext)
-        workManager.enqueue(locationUpdateWorkRequest)
     }
 
 
@@ -331,6 +327,11 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     override fun onResume() {
         binding.navigationView.setCheckedItem(R.id.explore)
         super.onResume()
+    }
+
+    override fun onDestroy() {
+        infoConnected.removeEventListener(eventListener)
+        super.onDestroy()
     }
 
 

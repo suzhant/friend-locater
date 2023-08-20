@@ -15,8 +15,10 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import com.example.googlemap.R
-import com.example.googlemap.model.UserLocation
+import com.example.googlemap.model.enums.TrackStatus
+import com.example.googlemap.receiver.StopServiceReceiver
 import com.example.googlemap.ui.main.MainActivity
+import com.example.googlemap.utils.Constants
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -25,7 +27,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
-import java.util.Date
+import java.util.UUID
 
 
 class LocationUpdateService : Service() {
@@ -33,15 +35,20 @@ class LocationUpdateService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
+    private var locationId = ""
+    private var senderId : String = ""
+    private var receiverId : String = ""
+
 
     override fun onCreate() {
         super.onCreate()
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+        locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10000) //10 sec
             .setWaitForAccurateLocation(true)
-            .setMinUpdateIntervalMillis(LocationRequest.Builder.IMPLICIT_MIN_UPDATE_INTERVAL)
+            .setMinUpdateIntervalMillis(2 * 60 * 1000) //2 min
             .setMaxUpdateAgeMillis(20000)
+            .setMinUpdateDistanceMeters(3f)
             .build()
 
         locationCallback = object : LocationCallback() {
@@ -84,7 +91,7 @@ class LocationUpdateService : Service() {
             .setContentText("Fetching location updates")
             .setSmallIcon(R.drawable.baseline_notifications_24)
             .setContentIntent(pendingIntent)
-            .addAction(R.drawable.baseline_close_24,"Stop Service",stopPendingIntent)
+            .addAction(R.drawable.baseline_close_24,"Stop",stopPendingIntent)
             .setOngoing(true)
 
         startForeground(NOTIFICATION_ID, notificationBuilder.build())
@@ -93,8 +100,15 @@ class LocationUpdateService : Service() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Start the foreground service with a notification to keep it alive
-        createNotification()
-        requestLocationUpdates()
+        if (intent!=null && intent.extras!=null){
+            locationId = UUID.randomUUID().toString()
+            senderId = intent.getStringExtra(Constants.SENDER_ID)!!
+            receiverId = intent.getStringExtra(Constants.RECEIVER_ID)!!
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(MyFirebaseMessagingService.NOTIFICATION_ID)
+            createNotification()
+            requestLocationUpdates()
+        }
         return START_NOT_STICKY
     }
 
@@ -116,16 +130,16 @@ class LocationUpdateService : Service() {
         // Replace "userId" with the unique identifier of the user (e.g., user's ID or email)
         val auth = FirebaseAuth.getInstance()
         if (auth.currentUser!=null){
-            val databaseReference = FirebaseDatabase.getInstance().reference.child("location").child(auth.uid!!)
-            val userLocation = UserLocation(
-                id = auth.uid!!,
-                latitude = location.latitude,
-                longitude =  location.longitude,
-                timestamp =  Date().time
+            val databaseReference = FirebaseDatabase.getInstance().reference.child("location")
+            val updateStatus = mapOf(
+                "latitude" to location.latitude,
+                "longitude" to location.longitude,
+                "status" to TrackStatus.TRACKING.name
             )
-            databaseReference.setValue(userLocation)
+            databaseReference.child(senderId).child(receiverId).updateChildren(updateStatus)
         }else{
             fusedLocationClient.removeLocationUpdates(locationCallback)
+            removeLocation()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -138,6 +152,12 @@ class LocationUpdateService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        removeLocation()
+    }
+
+    private fun removeLocation(){
+        val databaseReference = FirebaseDatabase.getInstance().reference.child("location")
+        databaseReference.child(senderId).child(receiverId).removeValue()
     }
 
     companion object {

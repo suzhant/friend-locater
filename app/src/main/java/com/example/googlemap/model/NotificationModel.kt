@@ -5,6 +5,5 @@ data class NotificationModel(
     val body : String?,
     val avatar : String?,
     val senderId: String?,
-    val receiverId : String?,
-    val msgType : String?,
+    val receiverId : String?
 )

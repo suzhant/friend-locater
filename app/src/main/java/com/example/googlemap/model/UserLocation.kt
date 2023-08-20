@@ -1,10 +1,11 @@
 package com.example.googlemap.model
 
 data class UserLocation(
-     val id: String?,
      val longitude: Double?,
      val latitude : Double?,
-     val timestamp : Long?
+     val status : String?,
+     val timestamp : Long?,
+     val userData: UserData?
 ){
-     constructor(): this(null,null,null,null)
+     constructor(): this(null,null,null,null,null)
 }

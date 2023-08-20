@@ -35,19 +35,16 @@ class FcmNotification(
         try {
             val mainObj = JSONObject()
             val contentObj = JSONObject()
-            val notificationObj = JSONObject()
             val dataObject = JSONObject()
             notificationModel.apply {
                 dataObject.put("senderId", senderId)
                 dataObject.put("receiverId", receiverId)
                 dataObject.put("profilePic", avatar)
-                dataObject.put("msgType", msgType)
-                notificationObj.put("title",title)
-                notificationObj.put("body",body)
+                dataObject.put("title",title)
+                dataObject.put("body",body)
             }
 
             contentObj.put("token", userFcmToken)
-            contentObj.put("notification",notificationObj)
             contentObj.put("data", dataObject)
             mainObj.put("message",contentObj)
             val request: JsonObjectRequest = object : JsonObjectRequest(

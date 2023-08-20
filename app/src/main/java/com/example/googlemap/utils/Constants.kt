@@ -8,4 +8,6 @@ object Constants {
     const val MAP_HYBRID = 3
     const val KEY_LATITUDE = "key_latitude"
     const val KEY_LONGITUDE = "key_longitude"
+    const val SENDER_ID = "SENDER_ID"
+    const val RECEIVER_ID = "RECEIVER_ID"
 }

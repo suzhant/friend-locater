@@ -2,30 +2,23 @@ package com.example.googlemap.ui.main.fragments
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.location.LocationManager
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
-import androidx.core.view.GravityCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.NetworkType
@@ -37,20 +30,12 @@ import com.bumptech.glide.request.transition.Transition
 import com.example.googlemap.R
 import com.example.googlemap.databinding.FragmentMapsBinding
 import com.example.googlemap.model.GeoPoint
-import com.example.googlemap.model.LocationResult
-import com.example.googlemap.model.UserData
 import com.example.googlemap.model.UserLocation
-import com.example.googlemap.services.LocationUpdateService
 import com.example.googlemap.services.LocationUploadWorker
-import com.example.googlemap.ui.LoginActivity
-import com.example.googlemap.ui.SettingActivity
-import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.main.MainActivityViewModel
-import com.example.googlemap.ui.main.dialog.MapTypeBottomSheet
 import com.example.googlemap.utils.Constants
 import com.example.googlemap.utils.Constants.KEY_LATITUDE
 import com.example.googlemap.utils.Constants.KEY_LONGITUDE
-import com.example.osm.adapter.PlaceAdapter
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -60,6 +45,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
@@ -71,6 +57,7 @@ import com.google.android.gms.maps.model.RoundCap
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.maps.android.PolyUtil
@@ -95,8 +82,10 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
     private lateinit var locationRequest: LocationRequest
     private lateinit var auth: FirebaseAuth
     private lateinit var database: FirebaseDatabase
-    private var oneTimeMarkerAddition = false
     private var friendMarkerPosition : Marker ?= null
+    private lateinit var markerListener: ValueEventListener
+    private lateinit var markerReference: DatabaseReference
+    private var bitmapDescriptor: BitmapDescriptor ?= null
 
     @SuppressLint("PotentialBehaviorOverride")
     private val callback = OnMapReadyCallback { map ->
@@ -208,47 +197,50 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
             findNavController().navigate(R.id.action_mapsFragment_to_friendBottomSheet)
         }
 
-        populateUsers()
+        populateMarkers()
     }
 
-    private fun populateUsers(){
-        database.getReference("location").addValueEventListener(object :ValueEventListener{
+    private fun populateMarkers(){
+        markerListener = object :ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()){
                     for (dataSnap in snapshot.children){
+                        Log.d("myMarker","snap called")
                         val location = dataSnap.getValue(UserLocation::class.java)
-                        val id = location?.id
                         val lat = location?.latitude
                         val long = location?.longitude
-                        if (id!=auth.uid && activity!=null){
-                            database.getReference("users").child(id!!).addListenerForSingleValueEvent(object : ValueEventListener{
-                                override fun onDataChange(snapshot: DataSnapshot) {
-                                    if (snapshot.exists()){
-                                        val pic = snapshot.child("profilePicUrl").getValue(String::class.java) ?: ""
-                                        val name = snapshot.child("userName").getValue(String::class.java)
-                                        loadIconWithGlide(pic,lat!!,long!!,name.toString())
-                                    }
-                                }
-
-                                override fun onCancelled(error: DatabaseError) {
-                                }
-
-                            })
+                        val userData = location?.userData
+                        userData?.let {
+                            val pic = userData.profilePicUrl ?: ""
+                            val name = userData.userName
+                            if (lat != null && long != null){
+                                loadIconWithGlide(
+                                    iconUrl = pic,
+                                    latitude = lat,
+                                    longitude = long,
+                                    name = name.toString()
+                                )
+                            }
                         }
-
+                    }
+                }else{
+                    if (friendMarkerPosition!=null){
+                        friendMarkerPosition?.remove()
+                        bitmapDescriptor = null
                     }
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
+
             }
-
-        })
-
-
+        }
+        markerReference = database.getReference("location").child(auth.uid!!)
+        markerReference.addValueEventListener(markerListener)
     }
 
-    private fun loadIconWithGlide(iconUrl: String,latitude : Double, longitude : Double,name: String) {
+    private fun loadIconWithGlide(iconUrl: String?,latitude : Double?, longitude : Double?,name: String?) {
+        Log.d("myMarker","function called")
         Glide.with(this)
             .asBitmap()
             .load(iconUrl)
@@ -256,17 +248,19 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
             .circleCrop()
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
-                    if (!oneTimeMarkerAddition){
+                    Log.d("myMarker","bitmap success")
+                    if (bitmapDescriptor == null){
+                        Log.d("myMarker","bitmap null")
                         val markerOptions = MarkerOptions()
-                            .position(LatLng(latitude, longitude))
+                            .position(LatLng(latitude!!, longitude!!))
                             .title(name)
                         friendMarkerPosition = googleMap?.addMarker(markerOptions)
-                        val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap)
+                        bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap)
                         friendMarkerPosition?.setIcon(bitmapDescriptor)
-                        oneTimeMarkerAddition = true
                         return
                     }
-                    friendMarkerPosition?.position = LatLng(latitude,longitude)
+                    friendMarkerPosition?.position = LatLng(latitude!!,longitude!!)
+
                 }
 
                 override fun onLoadCleared(placeholder: Drawable?) {
@@ -277,18 +271,18 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
                 override fun onLoadFailed(errorDrawable: Drawable?) {
                     // Called when the image failed to load.
                     // You can handle this case if needed.
-                    if (!oneTimeMarkerAddition){
+                    Log.d("myMarker","bitmap failed")
+                    if (bitmapDescriptor == null){
                         val markerOptions = MarkerOptions()
-                            .position(LatLng(latitude, longitude))
+                            .position(LatLng(latitude!!, longitude!!))
                             .title(name)
                         friendMarkerPosition = googleMap?.addMarker(markerOptions)
                         val drawable = ContextCompat.getDrawable(requireContext(),R.drawable.img)
                         val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(drawable!!.toBitmap(100 ,100))
                         friendMarkerPosition?.setIcon(bitmapDescriptor)
-                        oneTimeMarkerAddition = true
                         return
                     }
-                    friendMarkerPosition?.position = LatLng(latitude,longitude)
+                    friendMarkerPosition?.position = LatLng(latitude!!,longitude!!)
                 }
 
             })
@@ -374,6 +368,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
 
     override fun onDestroy() {
         viewModel.locationRepository.stopLocationUpdates()
+        markerReference.removeEventListener(markerListener)
         super.onDestroy()
         mapFragment.onDestroy()
     }

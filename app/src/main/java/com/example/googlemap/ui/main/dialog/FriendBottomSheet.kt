@@ -1,16 +1,31 @@
 package com.example.googlemap.ui.main.dialog
 
+import android.app.Dialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import com.example.googlemap.adapter.LocateFriendAdapter
 import com.example.googlemap.databinding.FragmentBottomSheetFriendBinding
 import com.example.googlemap.model.Friend
 import com.example.googlemap.model.NotificationModel
+import com.example.googlemap.model.UserData
+import com.example.googlemap.model.UserLocation
+import com.example.googlemap.model.enums.TrackStatus
+import com.example.googlemap.services.LocationUploadWorker
+import com.example.googlemap.ui.friend.SearchViewModel
+import com.example.googlemap.ui.main.MainActivityViewModel
 import com.example.googlemap.utils.FcmNotification
+import com.example.googlemap.utils.ProgressHelper
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.firebase.auth.FirebaseAuth
@@ -18,6 +33,8 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.gson.Gson
+import java.util.Date
 
 class FriendBottomSheet : BottomSheetDialogFragment()  {
 
@@ -25,10 +42,12 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
     private val binding : FragmentBottomSheetFriendBinding by lazy {
         FragmentBottomSheetFriendBinding.inflate(layoutInflater)
     }
+    private val searchViewModel : SearchViewModel by activityViewModels()
     private val friendList = mutableListOf<Friend>()
     private lateinit var friendAdapter: LocateFriendAdapter
     private lateinit var auth : FirebaseAuth
     private lateinit var database: FirebaseDatabase
+    private lateinit var dialog : Dialog
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -73,38 +92,101 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
         binding.recyclerTrackFriend.apply {
             layoutManager = LinearLayoutManager(requireContext())
             friendAdapter = LocateFriendAdapter(onClick = {friend ->
-                sendNotification(friend)
+                dialog = ProgressHelper.buildProgressDialog(requireContext())
+                dialog.show()
+                locateUser(friend)
             })
             adapter = friendAdapter
             addItemDecoration(DividerItemDecoration(requireContext(),DividerItemDecoration.VERTICAL))
         }
     }
 
-    private fun sendNotification(friend: Friend) {
-        friend.userData?.run {
-            database.getReference("Token").child(userId).addListenerForSingleValueEvent(object : ValueEventListener{
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()){
-                        val token = snapshot.child("token").getValue(String::class.java)
-                        val notification = NotificationModel(
-                            title = userName,
-                            body = "hi $userName",
+    private fun locateUser(friend: Friend) {
+        val senderId = auth.uid
+        val receiverId = friend.userData?.userId
+        val receiverObj =  UserLocation(
+           longitude = null,
+           latitude = null,
+           status = TrackStatus.PENDING.name,
+           timestamp = Date().time,
+           userData = friend.userData
+        )
+        val locationRef = database.getReference("location")
+        locationRef.addListenerForSingleValueEvent(object : ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()){
+                    val data = snapshot.value as? Map<*, *>
+                    if (data?.containsKey(senderId) == true) {
+                        dialog.dismiss()
+                        Toast.makeText(requireContext(),"You can track only one user at a time",Toast.LENGTH_SHORT).show()
+                    } else {
+                        sendNotification(friend)
+                        locationRef.child(senderId!!).child(receiverId!!).setValue(receiverObj)
+                    }
+                }else{
+                    sendNotification(friend)
+                    locationRef.child(senderId!!).child(receiverId!!).setValue(receiverObj)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+
+            }
+
+        })
+
+    }
+
+    private fun sendNotification(friend: Friend){
+        val userData = searchViewModel.userData.value
+        database.getReference("Token").child(friend.userData?.userId!!).addListenerForSingleValueEvent(object : ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()){
+                    dialog.dismiss()
+                    val token = snapshot.child("token").getValue(String::class.java)
+                    val notification = userData?.run {
+                        NotificationModel(
+                            title = "Location Request",
+                            body = "$userName is requesting to track your location",
                             avatar = profilePicUrl,
-                            senderId = auth.uid,
-                            receiverId = userId,
-                            msgType = "text"
+                            senderId = userId,
+                            receiverId = friend.userData.userId
                         )
-                        val notificationSender = FcmNotification(requireContext(),token,notification)
+                    }
+                    context?.let {
+                        val notificationSender = FcmNotification(it,token,notification!!)
                         notificationSender.sendNotifications()
                     }
+                }else{
+                    dialog.dismiss()
                 }
+            }
 
-                override fun onCancelled(error: DatabaseError) {
+            override fun onCancelled(error: DatabaseError) {
 
-                }
+            }
 
-            })
-        }
+        })
+    }
+
+    private fun scheduleLocationUpdates(friend: Friend,userData: UserData) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val inputData = Data.Builder()
+            .putString("friend", Gson().toJson(friend))
+            .putString("userData",Gson().toJson(userData))
+            .build()
+        // Create a OneTimeWorkRequest to trigger the Worker
+        val locationUpdateWorkRequest = OneTimeWorkRequest.Builder(LocationUploadWorker::class.java)
+            .setConstraints(constraints)
+            .setInputData(inputData)
+            .addTag("myLocationUpdate")
+            .build()
+
+        val workManager = WorkManager.getInstance(requireContext())
+        workManager.enqueue(locationUpdateWorkRequest)
     }
 
 }
