@@ -4,7 +4,6 @@ import com.example.googlemap.listener.OnPlaceFetchedListener
 import com.example.googlemap.model.LocationResult
 import com.example.googlemap.network.ApiClient
 import com.example.googlemap.network.LocationIQService
-import com.example.googlemap.utils.Constants
 import com.google.maps.DirectionsApiRequest
 import com.google.maps.GeoApiContext
 import com.google.maps.model.DirectionsResult
@@ -21,14 +20,15 @@ class MapRepository {
     private var geoApiContext : GeoApiContext ?= null
 
 
+
     init {
         geoApiContext = GeoApiContext.Builder()
-            .apiKey(Constants.MAP_API_KEY)
+            .apiKey(com.example.googlemap.BuildConfig.MAP_API_KEY)
             .build()
     }
 
     fun searchLocation(query: String, listener: OnPlaceFetchedListener) {
-        val apiKey = Constants.API_KEY
+        val apiKey = com.example.googlemap.BuildConfig.LOCATIONIQ_API_KEY
         val call = locationIQService.searchLocation(apiKey, query)
         call.enqueue(object : Callback<List<LocationResult>> {
             override fun onResponse(
@@ -85,7 +85,7 @@ class MapRepository {
 //        })
 //    }
 
-    fun calculateDirection(origin: LatLng, destination: LatLng,travelMode: TravelMode) : List<DirectionsResult>?{
+    fun calculateDirection(origin: LatLng, destination: LatLng) : List<DirectionsResult>?{
         val results = mutableListOf<DirectionsResult>()
 
         val drivingRequest = DirectionsApiRequest(geoApiContext).alternatives(false)

@@ -54,12 +54,13 @@ import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.maps.GeoApiContext
+import com.google.firebase.ktx.Firebase
 import com.google.maps.android.PolyUtil
 import com.google.maps.model.TravelMode
 import kotlinx.coroutines.Dispatchers
@@ -426,6 +427,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
                     it.startResolutionForResult(requireActivity(), REQUEST_CHECK_SETTINGS)
                 } catch (e: IntentSender.SendIntentException) {
                     // Ignore the error.
+                    Firebase.crashlytics.recordException(e)
                 } catch (e: ClassCastException) {
                     // Ignore, should be an impossible error.
                 }

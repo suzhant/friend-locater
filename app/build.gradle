@@ -6,6 +6,7 @@ plugins {
     id 'com.google.gms.google-services'
     id 'kotlin-parcelize'
     id("androidx.navigation.safeargs.kotlin")
+    id 'com.google.firebase.crashlytics'
 }
 
 android {
@@ -20,6 +21,12 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file("local.properties").newDataInputStream())
+
+        buildConfigField("String", "API_KEY", "\"${properties.getProperty("MAP_API_KEY")}\"")
+        buildConfigField("String", "LOCATIONIQ_API_KEY", "\"${properties.getProperty("LOCATIONIQ_API_KEY")}\"")
     }
 
     buildTypes {
@@ -38,6 +45,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     packagingOptions {
         exclude 'META-INF/DEPENDENCIES'
@@ -59,6 +67,8 @@ dependencies {
     implementation 'androidx.navigation:navigation-ui-ktx:2.7.0'
     implementation 'com.android.volley:volley:1.2.1'
     implementation 'com.google.android.libraries.places:places:3.2.0'
+    implementation 'com.google.firebase:firebase-crashlytics-ktx:18.4.0'
+    implementation("com.google.firebase:firebase-analytics-ktx:21.3.0")
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'

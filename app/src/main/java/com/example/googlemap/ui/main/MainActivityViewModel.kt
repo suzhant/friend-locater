@@ -87,12 +87,11 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
     }
 
 
-    fun getRoute(origin: LatLng,destination : LatLng,travelMode: TravelMode = TravelMode.DRIVING){
+    fun getRoute(origin: LatLng,destination : LatLng){
         viewModelScope.launch(Dispatchers.IO) {
-        val results =  mapRepository.calculateDirection(
+             val results =  mapRepository.calculateDirection(
                 origin = origin,
-                destination = destination,
-                travelMode = travelMode)
+                destination = destination)
             _routeLiveData.postValue(results)
         }
     }
