@@ -1,14 +1,15 @@
 package com.example.googlemap.repository
 
-import android.util.Log
 import com.example.googlemap.listener.OnPlaceFetchedListener
-import com.example.googlemap.listener.OnRouteFetchedListener
-import com.example.googlemap.model.DirectionResponse
 import com.example.googlemap.model.LocationResult
 import com.example.googlemap.network.ApiClient
-import com.example.googlemap.network.LocationIQRoutingService
 import com.example.googlemap.network.LocationIQService
 import com.example.googlemap.utils.Constants
+import com.google.maps.DirectionsApiRequest
+import com.google.maps.GeoApiContext
+import com.google.maps.model.DirectionsResult
+import com.google.maps.model.LatLng
+import com.google.maps.model.TravelMode
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -16,9 +17,15 @@ import retrofit2.Response
 class MapRepository {
 
     private var locationIQService = ApiClient.retrofit.create(LocationIQService::class.java)
-    private val locationIQRoutingService = ApiClient.retrofit.create(LocationIQRoutingService::class.java)
+   // private val locationIQRoutingService = ApiClient.retrofit.create(LocationIQRoutingService::class.java)
+    private var geoApiContext : GeoApiContext ?= null
 
 
+    init {
+        geoApiContext = GeoApiContext.Builder()
+            .apiKey(Constants.MAP_API_KEY)
+            .build()
+    }
 
     fun searchLocation(query: String, listener: OnPlaceFetchedListener) {
         val apiKey = Constants.API_KEY
@@ -45,38 +52,63 @@ class MapRepository {
         })
     }
 
-     fun getRoute(coordinates : String, listener: OnRouteFetchedListener) {
-        val service = "directions"
-        val profile = "driving"
+//     fun getRoute(coordinates : String, listener: OnRouteFetchedListener) {
+//        val service = "directions"
+//        val profile = "driving"
+//
+//        val call = locationIQRoutingService.getRoute(service, profile, coordinates,
+//            Constants.API_KEY
+//        )
+//        call.enqueue(object : Callback<DirectionResponse> {
+//            override fun onResponse(
+//                call: Call<DirectionResponse>,
+//                response: Response<DirectionResponse>,
+//            ) {
+//                if (response.isSuccessful) {
+//                    // Handle the direction response
+//                    val directionResponse = response.body()
+//                    Log.d("routes",directionResponse.toString())
+//
+//                    directionResponse?.let {
+//                        listener.onRouteFetched(it)
+//                    }
+//                } else {
+//                    // Handle error response
+//                    listener.onFailure("Failed to route")
+//                }
+//            }
+//
+//            override fun onFailure(call: Call<DirectionResponse>, t: Throwable) {
+//                // Handle failure
+//                listener.onFailure("Failed to route")
+//            }
+//        })
+//    }
 
-        val call = locationIQRoutingService.getRoute(service, profile, coordinates,
-            Constants.API_KEY
-        )
-        call.enqueue(object : Callback<DirectionResponse> {
-            override fun onResponse(
-                call: Call<DirectionResponse>,
-                response: Response<DirectionResponse>,
-            ) {
-                if (response.isSuccessful) {
-                    // Handle the direction response
-                    val directionResponse = response.body()
-                    Log.d("routes",directionResponse.toString())
+    fun calculateDirection(origin: LatLng, destination: LatLng,travelMode: TravelMode) : List<DirectionsResult>?{
+        val results = mutableListOf<DirectionsResult>()
 
-                    directionResponse?.let {
-                        listener.onRouteFetched(it)
-                    }
-                } else {
-                    // Handle error response
-                    listener.onFailure("Failed to route")
-                }
-            }
+        val drivingRequest = DirectionsApiRequest(geoApiContext).alternatives(false)
+            .mode(TravelMode.DRIVING)
+            .origin(origin)
+            .optimizeWaypoints(true)
 
-            override fun onFailure(call: Call<DirectionResponse>, t: Throwable) {
-                // Handle failure
-                listener.onFailure("Failed to route")
-            }
-        })
+            .destination(destination)
+
+        val walkingRequest = DirectionsApiRequest(geoApiContext).alternatives(false)
+                .mode(TravelMode.WALKING)
+                .origin(origin)
+                .optimizeWaypoints(true)
+                .destination(destination)
+
+        // Make the directions requests asynchronously
+        val walkingResult = walkingRequest.await()
+        val drivingResult = drivingRequest.await()
+
+        results.add(drivingResult)
+        results.add(walkingResult)
+
+        return results
     }
-
 
 }

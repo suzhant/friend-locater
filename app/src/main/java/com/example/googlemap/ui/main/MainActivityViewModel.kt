@@ -7,13 +7,15 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.googlemap.listener.OnPlaceFetchedListener
-import com.example.googlemap.listener.OnRouteFetchedListener
-import com.example.googlemap.model.DirectionResponse
 import com.example.googlemap.model.GeoPoint
 import com.example.googlemap.model.LocationResult
 import com.example.googlemap.repository.LocationRepository
 import com.example.googlemap.repository.MapRepository
 import com.example.googlemap.utils.Constants
+import com.google.android.libraries.places.api.model.Place
+import com.google.maps.model.DirectionsResult
+import com.google.maps.model.LatLng
+import com.google.maps.model.TravelMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -34,11 +36,11 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
     private val _placesListLiveData : MutableLiveData<MutableList<LocationResult>> = MutableLiveData()
     val placesLiveData: LiveData<MutableList<LocationResult>> get() = _placesListLiveData
 
-    private val _routeLiveData : MutableLiveData<DirectionResponse> = MutableLiveData()
-    val routeLiveData : LiveData<DirectionResponse> get() = _routeLiveData
+    private val _routeLiveData : MutableLiveData<List<DirectionsResult>?> = MutableLiveData()
+    val routeLiveData : LiveData<List<DirectionsResult>?> get() = _routeLiveData
 
-    private val _destinationLivedata: MutableLiveData<LocationResult> = MutableLiveData<LocationResult>()
-    val destinationLiveData : LiveData<LocationResult> = _destinationLivedata
+    private val _destinationLivedata: MutableLiveData<Place> = MutableLiveData<Place>()
+    val destinationLiveData : LiveData<Place> = _destinationLivedata
 
     private val _currentLocation : MutableLiveData<GeoPoint> = MutableLiveData()
     val currentLocation :LiveData<GeoPoint> get() = _currentLocation
@@ -60,8 +62,8 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         _linkEnabled.value = enabled
     }
 
-    fun setDestinationData(location: LocationResult) {
-        _destinationLivedata.value = location
+    fun setDestinationData(location: Place) {
+        _destinationLivedata.postValue(location)
     }
 
     fun setGps(enabled : Boolean){
@@ -84,19 +86,15 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
          }
     }
 
-     fun getRoute(coordinates : String){
-         viewModelScope.launch(Dispatchers.IO) {
-             mapRepository.getRoute(coordinates,object : OnRouteFetchedListener{
-                 override fun onRouteFetched(response: DirectionResponse) {
-                     _routeLiveData.postValue(response)
-                 }
 
-                 override fun onFailure(errorMessage: String) {
-                     Log.d("error",errorMessage)
-                 }
-
-             })
-         }
+    fun getRoute(origin: LatLng,destination : LatLng,travelMode: TravelMode = TravelMode.DRIVING){
+        viewModelScope.launch(Dispatchers.IO) {
+        val results =  mapRepository.calculateDirection(
+                origin = origin,
+                destination = destination,
+                travelMode = travelMode)
+            _routeLiveData.postValue(results)
+        }
     }
 
     fun getDeviceLocation(){

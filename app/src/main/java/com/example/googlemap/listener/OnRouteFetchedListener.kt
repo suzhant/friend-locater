@@ -1,9 +1,9 @@
 package com.example.googlemap.listener
 
-import com.example.googlemap.model.DirectionResponse
+import com.google.maps.model.DirectionsResult
 
 interface OnRouteFetchedListener {
 
-    fun onRouteFetched(response: DirectionResponse)
+    fun onRouteFetched(response: DirectionsResult)
     fun onFailure(errorMessage: String)
 }

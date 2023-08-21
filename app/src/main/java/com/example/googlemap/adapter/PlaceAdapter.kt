@@ -3,16 +3,16 @@ package com.example.osm.adapter
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.AsyncListDiffer
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import com.example.googlemap.databinding.WidgetPlaceBinding
 import com.example.googlemap.listener.PlaceListener
-import com.example.googlemap.model.LocationResult
+import com.google.android.libraries.places.api.model.AutocompletePrediction
 
 class PlaceAdapter(private val placeListener: PlaceListener) : RecyclerView.Adapter<PlaceAdapter.PlaceViewHolder>() {
 
-   // private var places = mutableListOf<PlaceSearch.Place>()
-    private var places = mutableListOf<LocationResult>()
     private lateinit var context: Context
 
     inner class PlaceViewHolder(val binding: WidgetPlaceBinding) : ViewHolder(binding.root)
@@ -24,28 +24,32 @@ class PlaceAdapter(private val placeListener: PlaceListener) : RecyclerView.Adap
     }
 
     override fun getItemCount(): Int {
-        return places.size
+        return differ.currentList.size
     }
 
     override fun onBindViewHolder(holder: PlaceViewHolder, position: Int) {
-        val place = places[position]
+        val place = differ.currentList[position]
         with(holder.binding){
-            txtPlace.text = place.displayName
+            txtPrimaryAddress.text = place.getPrimaryText(null)
+            txtSecondaryAddress.text = place.getSecondaryText(null)
 
-            txtPlace.setOnClickListener {
+            holder.itemView.setOnClickListener {
                 placeListener.onPlaceClicked(place)
             }
         }
     }
 
-//    fun setPlaces(placeSearch: MutableList<PlaceSearch.Place>){
-//        this.places = placeSearch
-//        notifyDataSetChanged()
-//    }
+    private val differCallback = object : DiffUtil.ItemCallback<AutocompletePrediction>(){
+        override fun areItemsTheSame(oldItem: AutocompletePrediction, newItem: AutocompletePrediction): Boolean {
+            return  oldItem.placeId == newItem.placeId
+        }
 
-    fun setPlaces(placeSearch: MutableList<LocationResult>){
-        this.places = placeSearch
-        notifyDataSetChanged()
+        override fun areContentsTheSame(oldItem: AutocompletePrediction, newItem: AutocompletePrediction): Boolean {
+            return oldItem.equals(newItem)
+        }
+
     }
+
+    val differ = AsyncListDiffer(this,differCallback)
 
 }

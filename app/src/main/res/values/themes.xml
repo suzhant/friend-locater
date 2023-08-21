@@ -16,4 +16,11 @@
 
     <style name="Theme.GoogleMap" parent="Base.Theme.GoogleMap" />
 
+    <style name="CustomChipAction" parent="@style/Widget.MaterialComponents.Chip.Action">
+        <item name="chipBackgroundColor">@color/chip_background_color</item>
+        <item name="android:textColor">@color/chip_text_color</item>
+        <item name="chipIconTint">@color/chip_icon_color</item>
+        <item name="rippleColor">@color/transparent</item>
+    </style>
+
 </resources>

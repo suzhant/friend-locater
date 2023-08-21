@@ -12,30 +12,26 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.work.Constraints
-import androidx.work.Data
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequest
-import androidx.work.WorkManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.example.googlemap.R
 import com.example.googlemap.databinding.FragmentMapsBinding
 import com.example.googlemap.model.GeoPoint
+import com.example.googlemap.model.PolyLineModel
 import com.example.googlemap.model.UserLocation
-import com.example.googlemap.services.LocationUploadWorker
 import com.example.googlemap.ui.main.MainActivityViewModel
 import com.example.googlemap.utils.Constants
-import com.example.googlemap.utils.Constants.KEY_LATITUDE
-import com.example.googlemap.utils.Constants.KEY_LONGITUDE
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -47,10 +43,13 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.Dot
+import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PatternItem
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
@@ -60,10 +59,15 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.maps.GeoApiContext
 import com.google.maps.android.PolyUtil
+import com.google.maps.model.TravelMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 
-class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
+class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMapClickListener {
 
     private val REQUEST_CHECK_SETTINGS: Int = 123
     private val binding: FragmentMapsBinding by lazy {
@@ -86,6 +90,13 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
     private lateinit var markerListener: ValueEventListener
     private lateinit var markerReference: DatabaseReference
     private var bitmapDescriptor: BitmapDescriptor ?= null
+    private lateinit var slideDownAnimation: Animation
+    private lateinit var slideUpAnimation: Animation
+    private val polyList = mutableListOf<PolyLineModel>()
+    private val PATTERN_GAP_LENGTH_PX = 20
+    private val DOT: PatternItem = Dot()
+    private  val GAP: PatternItem = Gap(PATTERN_GAP_LENGTH_PX.toFloat())
+    private val PATTERN_POLYLINE_DOTTED = listOf(GAP, DOT)
 
     @SuppressLint("PotentialBehaviorOverride")
     private val callback = OnMapReadyCallback { map ->
@@ -106,6 +117,8 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
                 }
             }
         }
+
+        map.setOnMapClickListener(this)
     }
 
     override fun onCreateView(
@@ -113,7 +126,8 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
         container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View {
-
+        slideDownAnimation = AnimationUtils.loadAnimation(requireContext(), R.anim.slide_down)
+        slideUpAnimation = AnimationUtils.loadAnimation(requireContext(),R.anim.slide_up)
         return binding.root
     }
 
@@ -128,33 +142,96 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
         checkGps()
 
         viewModel.destinationLiveData.observe(viewLifecycleOwner){ data ->
-            val latitude = data.latitude.toDouble()
-            val longitude = data.longitude.toDouble()
-            val position = LatLng(latitude, longitude)
+            val latlng = data.latLng
+            val latitude = latlng?.latitude
+            val longitude = latlng?.longitude
+            val position = LatLng(latitude!!, longitude!!)
             val currentLocation = viewModel.currentLocation.value
             val startLongitude = currentLocation?.longitude
             val startLatitude = currentLocation?.latitude
+            val origin = com.google.maps.model.LatLng(startLatitude!!,startLongitude!!)
+            val destination = com.google.maps.model.LatLng(latitude,longitude)
             val route = GeoPoint()
-            route.setCoordinate(startLongitude!!,startLatitude!!,longitude,latitude)
-            viewModel.getRoute(route.getCoordinate())
-            googleMap?.addMarker(MarkerOptions().position(position).title(data.displayName))
+            route.setCoordinate(startLongitude,startLatitude,longitude,latitude)
+            viewModel.getRoute(origin,destination)
+            Log.d("routes",route.toString())
+            googleMap?.addMarker(MarkerOptions().position(position).title(data.address))
             val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
             googleMap?.animateCamera(cameraUpdate,duration,null)
         }
 
         viewModel.routeLiveData.observe(viewLifecycleOwner){directionResponse ->
             clearPolyLine()
-            val route = directionResponse?.routes?.firstOrNull() // Get the first route
-            val routeGeometry = route?.geometry // Get the encoded polyline geometry of the route
-            val decodedRoutePoints = PolyUtil.decode(routeGeometry)
-            val polylineOptions = PolylineOptions()
-                .startCap(RoundCap())
-                .endCap(RoundCap())
-                .width(POLYLINE_STROKE_WIDTH_PX.toFloat())
-                .color(requireContext().getColor(R.color.colorPrimary))
-                .jointType(JointType.ROUND)
-                .addAll(decodedRoutePoints.map { LatLng(it.latitude, it.longitude) })
-            polyline = googleMap?.addPolyline(polylineOptions)
+            polyList.clear()
+
+            directionResponse?.forEach{ r ->
+                val route = r.routes[0]
+                route?.let {
+                    val polylinePoints = route.overviewPolyline.encodedPath
+                    Log.d("places", polylinePoints)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        polylinePoints.let { points ->
+                            val decodedPoints = PolyUtil.decode(points)
+                            val polylineOptions = PolylineOptions()
+                                .startCap(RoundCap())
+                                .endCap(RoundCap())
+                                .width(POLYLINE_STROKE_WIDTH_PX.toFloat())
+                                .color(requireContext().getColor(R.color.colorPrimary))
+                                .jointType(JointType.ROUND)
+                                .addAll(decodedPoints.map { LatLng(it.latitude, it.longitude) })
+                            withContext(Dispatchers.Main){
+                                val mode = route.legs[0].steps[0].travelMode
+                                if (mode == TravelMode.DRIVING){
+                                    val distanceValue = route.legs[0].distance
+                                    val durationText = route.legs[0].duration
+                                    binding.lytBottomsheetLocomotion.txtTime.text = durationText.toString()
+                                    binding.lytBottomsheetLocomotion.txtDistance.text = "($distanceValue)"
+                                    binding.lytBottomsheetLocomotion.chipCar.text = distanceValue.toString()
+                                    val model = PolyLineModel(travelMode = TravelMode.DRIVING,polyline = polylineOptions, distance = distanceValue, duration = durationText)
+                                    polyList.add(model)
+                                    if (binding.lytBottomsheetLocomotion.chipCar.isChecked){
+                                       polyline =  googleMap?.addPolyline(polylineOptions)
+                                    }
+                                }else if (mode == TravelMode.WALKING){
+                                    val distanceValue = route.legs[0].distance
+                                    val durationText = route.legs[0].duration
+                                    binding.lytBottomsheetLocomotion.txtTime.text = durationText.toString()
+                                    binding.lytBottomsheetLocomotion.txtDistance.text = "($distanceValue)"
+                                    binding.lytBottomsheetLocomotion.chipWalk.text = distanceValue.toString()
+                                    polylineOptions.pattern(PATTERN_POLYLINE_DOTTED)
+                                    val model = PolyLineModel(travelMode = TravelMode.WALKING,polyline = polylineOptions ,distance = distanceValue, duration = durationText)
+                                    polyList.add(model)
+                                    if (binding.lytBottomsheetLocomotion.chipWalk.isChecked){
+                                        polyline =  googleMap?.addPolyline(polylineOptions)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+            startShowAnimation()
+
+        }
+
+        binding.lytBottomsheetLocomotion.chipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+            clearPolyLine()
+            polyline = if (binding.lytBottomsheetLocomotion.chipCar.isChecked){
+                val polylineOption =  polyList.find { it.travelMode == TravelMode.DRIVING }
+                polylineOption?.apply {
+                    binding.lytBottomsheetLocomotion.txtTime.text = duration.toString()
+                    binding.lytBottomsheetLocomotion.txtDistance.text = "($distance)"
+                }
+                googleMap?.addPolyline(polylineOption?.polyline!!)
+            }else{
+                val polylineOption =  polyList.find { it.travelMode == TravelMode.WALKING }
+                polylineOption?.apply {
+                    binding.lytBottomsheetLocomotion.txtTime.text = duration.toString()
+                    binding.lytBottomsheetLocomotion.txtDistance.text = "($distance)"
+                }
+                googleMap?.addPolyline(polylineOption?.polyline!!)
+            }
         }
 
         viewModel.gpsEnabled.observe(viewLifecycleOwner){enabled ->
@@ -197,7 +274,46 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
             findNavController().navigate(R.id.action_mapsFragment_to_friendBottomSheet)
         }
 
+
+        slideDownAnimation.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {}
+
+            override fun onAnimationEnd(animation: Animation?) {
+                // Hide the layout after animation
+
+            }
+
+            override fun onAnimationRepeat(animation: Animation?) {}
+        })
+
+
+        slideUpAnimation.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {
+                // Show the layout before animation
+                binding.lytBottomsheetLocomotion.root.visibility = View.VISIBLE
+            }
+
+            override fun onAnimationEnd(animation: Animation?) {
+
+            }
+
+            override fun onAnimationRepeat(animation: Animation?) {}
+        })
+
+
         populateMarkers()
+    }
+
+
+
+    private fun startHideAnimation() {
+        binding.lytBottomsheetLocomotion.root.clearAnimation()
+        binding.lytBottomsheetLocomotion.root.startAnimation(slideDownAnimation)
+    }
+
+    private fun startShowAnimation(){
+        binding.lytBottomsheetLocomotion.root.clearAnimation()
+        binding.lytBottomsheetLocomotion.root.startAnimation(slideUpAnimation)
     }
 
     private fun populateMarkers(){
@@ -288,25 +404,6 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
             })
     }
 
-    private fun uploadLocation(position: LatLng) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-
-        val inputData: Data = Data.Builder()
-            .putDouble(KEY_LATITUDE, position.latitude)
-            .putDouble(KEY_LONGITUDE, position.longitude)
-            .build()
-
-        val uploadWork: OneTimeWorkRequest =
-            OneTimeWorkRequest.Builder(LocationUploadWorker::class.java).setConstraints(constraints)
-                .setInputData(inputData).build()
-
-        WorkManager.getInstance(requireContext().applicationContext).enqueue(uploadWork)
-
-    }
-
     private fun checkGps() {
         val locationManager = context?.getSystemService(AppCompatActivity.LOCATION_SERVICE) as LocationManager
         val isGPSEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
@@ -383,15 +480,28 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener {
         val markerLatLng = marker.position
         val markerLatitude = markerLatLng.latitude
         val markerLongitude = markerLatLng.longitude
-
         val currentLocation = viewModel.currentLocation.value
         val startLongitude = currentLocation?.longitude
         val startLatitude = currentLocation?.latitude
-        val coordinates = "${startLongitude},${startLatitude};${markerLongitude},${markerLatitude}"
-        viewModel.getRoute(coordinates)
-        // Return false to allow the default behavior (opening the info window, if available)
-        // Return true to prevent the default behavior from happening
+        val origin = com.google.maps.model.LatLng(startLatitude!!,startLongitude!!)
+        val destination = com.google.maps.model.LatLng(markerLatitude,markerLongitude)
+        if (polyline == null){
+            viewModel.getRoute(origin,destination)
+        }
         return false
+    }
+
+    override fun onMapClick(p0: LatLng) {
+        val destinationRoute = viewModel.destinationLiveData.value?.id
+        if (destinationRoute !=null){
+            if (binding.lytBottomsheetLocomotion.root.visibility == View.GONE){
+                startShowAnimation()
+            }else{
+                startHideAnimation()
+                binding.lytBottomsheetLocomotion.root.visibility = View.GONE
+            }
+        }
+
     }
 
 }

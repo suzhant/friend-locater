@@ -18,6 +18,7 @@ import androidx.core.view.GravityCompat
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.onNavDestinationSelected
 import androidx.navigation.ui.setupWithNavController
+import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
@@ -25,7 +26,6 @@ import com.bumptech.glide.request.transition.Transition
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
-import com.example.googlemap.model.LocationResult
 import com.example.googlemap.model.UserData
 import com.example.googlemap.services.LocationUpdateService
 import com.example.googlemap.ui.LoginActivity
@@ -33,7 +33,17 @@ import com.example.googlemap.ui.SettingActivity
 import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.friend.SearchViewModel
 import com.example.osm.adapter.PlaceAdapter
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.OnCompleteListener
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompletePrediction
+import com.google.android.libraries.places.api.model.AutocompleteSessionToken
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.FetchPlaceRequest
+import com.google.android.libraries.places.api.net.FetchPlaceResponse
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
+import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse
+import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -43,6 +53,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.messaging.FirebaseMessaging
+import java.util.Locale
 
 
 class MainActivity : AppCompatActivity(), PlaceListener {
@@ -61,14 +72,16 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private lateinit var database: FirebaseDatabase
     private lateinit var infoConnected : DatabaseReference
     private lateinit var eventListener: ValueEventListener
+    private lateinit var placesClient : PlacesClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
-
+        initializePlace()
         manageConnection()
         linkDrawerLayout()
         setHeaderView()
@@ -105,6 +118,13 @@ class MainActivity : AppCompatActivity(), PlaceListener {
 
     }
 
+    private fun initializePlace(){
+        if (!Places.isInitialized()) {
+            Places.initialize(applicationContext, getString(R.string.map_api), Locale.US);
+        }
+        placesClient = Places.createClient(this)
+    }
+
     private fun manageConnection() {
         val statusRef = database.reference.child("Connection").child(auth!!.uid!!)
         val status: DatabaseReference = statusRef.child("Status")
@@ -135,27 +155,12 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     }
 
 
-//    private fun initFragment() {
-//        // Get the FragmentManager and start a transaction
-//        val fragmentManager = supportFragmentManager
-//        val fragmentTransaction = fragmentManager.beginTransaction()
-//        val fragment = MapsFragment()
-//
-//        // Replace the contents of the fragment container with your fragment
-//        fragmentTransaction.replace(binding.fragmentContainer.id, fragment)
-//
-//        // Commit the transaction
-//        fragmentTransaction.commit()
-//    }
-
-
-
     private fun initViews() {
         binding.searchView.editText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 val query = binding.searchView.editText.text.toString()
                 if (query.isNotEmpty()){
-                    viewModel.fetchPlaces(query)
+                    predictLocation(query)
                 }
                 return@setOnEditorActionListener true
             }
@@ -163,7 +168,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         }
 
         viewModel.placesLiveData.observe(this){locations ->
-            adapter.setPlaces(locations as MutableList<LocationResult>)
+            adapter.differ.submitList(locations as MutableList<AutocompletePrediction>)
         }
 
 
@@ -182,7 +187,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
                 searchRunnable = Runnable {
                     if (isEditMode){
                         if (query.isNotEmpty()){
-                            viewModel.fetchPlaces(query)
+                            predictLocation(query)
                         }
                     }
                 }
@@ -239,6 +244,25 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             }
             true
         }
+    }
+
+    private fun predictLocation(query : String){
+        val token = AutocompleteSessionToken.newInstance()
+        val request =
+            FindAutocompletePredictionsRequest.builder()
+                .setCountries("np")
+                .setQuery(query)
+                .setSessionToken(token)
+                .build()
+        placesClient.findAutocompletePredictions(request)
+            .addOnSuccessListener { response: FindAutocompletePredictionsResponse ->
+                val predictions = response.autocompletePredictions
+                adapter.differ.submitList(predictions)
+            }
+            .addOnFailureListener { exception: Exception ->
+                // Handle error
+                Log.d("places",exception.message.toString())
+            }
     }
 
     private fun setHeaderView(){
@@ -314,14 +338,29 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         binding.recyclerSearch.layoutManager = layoutManager
         adapter = PlaceAdapter(this)
         binding.recyclerSearch.adapter = adapter
+        binding.recyclerSearch.addItemDecoration(DividerItemDecoration(this,DividerItemDecoration.VERTICAL))
     }
 
-    override fun onPlaceClicked(place: LocationResult) {
-        viewModel.setDestinationData(place)
-        adapter.setPlaces(mutableListOf())
-        binding.searchBar.text = place.displayName
+    override fun onPlaceClicked(place: AutocompletePrediction) {
+        getPlaces(place.placeId)
+        binding.searchBar.text = place.getPrimaryText(null)
         isEditMode = false
         binding.searchView.hide()
+    }
+
+    private fun getPlaces(placeId : String){
+        val placeFields = listOf(Place.Field.ID, Place.Field.NAME,Place.Field.LAT_LNG,Place.Field.ADDRESS)
+        val request = FetchPlaceRequest.newInstance(placeId, placeFields)
+        placesClient.fetchPlace(request)
+            .addOnSuccessListener { response: FetchPlaceResponse ->
+                val place = response.place
+                viewModel.setDestinationData(place)
+            }.addOnFailureListener { exception: Exception ->
+                if (exception is ApiException) {
+                    val statusCode = exception.statusCode
+                    Log.d("places",statusCode.toString())
+                }
+            }
     }
 
     override fun onResume() {
