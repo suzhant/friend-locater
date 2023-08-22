@@ -10,7 +10,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.Constraints
-import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
@@ -18,12 +18,10 @@ import com.example.googlemap.adapter.LocateFriendAdapter
 import com.example.googlemap.databinding.FragmentBottomSheetFriendBinding
 import com.example.googlemap.model.Friend
 import com.example.googlemap.model.NotificationModel
-import com.example.googlemap.model.UserData
 import com.example.googlemap.model.UserLocation
 import com.example.googlemap.model.enums.TrackStatus
-import com.example.googlemap.services.LocationUploadWorker
+import com.example.googlemap.services.LocationDeleteWorker
 import com.example.googlemap.ui.friend.SearchViewModel
-import com.example.googlemap.ui.main.MainActivityViewModel
 import com.example.googlemap.utils.FcmNotification
 import com.example.googlemap.utils.ProgressHelper
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -33,8 +31,8 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.gson.Gson
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 class FriendBottomSheet : BottomSheetDialogFragment()  {
 
@@ -156,6 +154,8 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
                     context?.let {
                         val notificationSender = FcmNotification(it,token,notification!!)
                         notificationSender.sendNotifications()
+                        // Start a timer to delete the node after 60 seconds
+                        scheduleLocationDelete()
                     }
                 }else{
                     dialog.dismiss()
@@ -169,24 +169,18 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
         })
     }
 
-    private fun scheduleLocationUpdates(friend: Friend,userData: UserData) {
+    private fun scheduleLocationDelete() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val inputData = Data.Builder()
-            .putString("friend", Gson().toJson(friend))
-            .putString("userData",Gson().toJson(userData))
-            .build()
         // Create a OneTimeWorkRequest to trigger the Worker
-        val locationUpdateWorkRequest = OneTimeWorkRequest.Builder(LocationUploadWorker::class.java)
+        val locationUpdateWorkRequest = OneTimeWorkRequest.Builder(LocationDeleteWorker::class.java)
             .setConstraints(constraints)
-            .setInputData(inputData)
-            .addTag("myLocationUpdate")
+            .setInitialDelay(62L,TimeUnit.SECONDS)
             .build()
 
         val workManager = WorkManager.getInstance(requireContext())
-        workManager.enqueue(locationUpdateWorkRequest)
+        workManager.enqueueUniqueWork(locationUpdateWorkRequest.stringId,ExistingWorkPolicy.APPEND,locationUpdateWorkRequest)
     }
-
 }
