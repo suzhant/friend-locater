@@ -118,8 +118,20 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
                         dialog.dismiss()
                         Toast.makeText(requireContext(),"You can track only one user at a time",Toast.LENGTH_SHORT).show()
                     } else {
-                        sendNotification(friend)
-                        locationRef.child(senderId!!).child(receiverId!!).setValue(receiverObj)
+                        for (dataSnap in snapshot.children){
+                            for (child in dataSnap.children){
+                                val user = child.getValue(UserLocation::class.java)
+                                user?.let {
+                                    if (user.userData?.userId == receiverId){
+                                        dialog.dismiss()
+                                        Toast.makeText(requireContext(),"The user is busy. Try again sometime",Toast.LENGTH_SHORT).show()
+                                    }else{
+                                        sendNotification(friend)
+                                        locationRef.child(senderId!!).child(receiverId!!).setValue(receiverObj)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }else{
                     sendNotification(friend)
