@@ -39,7 +39,6 @@ class LocationUpdateService : Service() {
     private var senderId : String = ""
     private var receiverId : String = ""
 
-
     override fun onCreate() {
         super.onCreate()
 
@@ -136,9 +135,12 @@ class LocationUpdateService : Service() {
                 "longitude" to location.longitude,
                 "status" to TrackStatus.TRACKING.name
             )
-            databaseReference.child(senderId).child(receiverId).updateChildren(updateStatus)
+            databaseReference.child(senderId).child(receiverId).updateChildren(updateStatus).addOnFailureListener {
+                removeLocation()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
         }else{
-            fusedLocationClient.removeLocationUpdates(locationCallback)
             removeLocation()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -151,13 +153,13 @@ class LocationUpdateService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
         removeLocation()
     }
 
     private fun removeLocation(){
         val databaseReference = FirebaseDatabase.getInstance().reference.child("location")
         databaseReference.child(senderId).child(receiverId).removeValue()
+        fusedLocationClient.removeLocationUpdates(locationCallback)
     }
 
     companion object {

@@ -6,4 +6,5 @@ object Constants {
     const val MAP_HYBRID = 3
     const val SENDER_ID = "SENDER_ID"
     const val RECEIVER_ID = "RECEIVER_ID"
+    const val NETWORK_STATE = "NETWORK_STATE"
 }

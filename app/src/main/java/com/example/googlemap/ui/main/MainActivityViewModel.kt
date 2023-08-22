@@ -15,7 +15,6 @@ import com.example.googlemap.utils.Constants
 import com.google.android.libraries.places.api.model.Place
 import com.google.maps.model.DirectionsResult
 import com.google.maps.model.LatLng
-import com.google.maps.model.TravelMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 

@@ -1,7 +1,10 @@
 package com.example.googlemap.ui.main
 
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.drawable.Drawable
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,9 +15,12 @@ import android.view.MenuItem
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.onNavDestinationSelected
 import androidx.navigation.ui.setupWithNavController
@@ -27,11 +33,14 @@ import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
 import com.example.googlemap.model.UserData
+import com.example.googlemap.receiver.ConnectivityReceiver
 import com.example.googlemap.services.LocationUpdateService
 import com.example.googlemap.ui.LoginActivity
 import com.example.googlemap.ui.SettingActivity
 import com.example.googlemap.ui.friend.FriendsActivity
 import com.example.googlemap.ui.friend.SearchViewModel
+import com.example.googlemap.utils.Constants
+import com.example.googlemap.utils.SettingPref
 import com.example.osm.adapter.PlaceAdapter
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.OnCompleteListener
@@ -53,6 +62,8 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 
@@ -73,6 +84,8 @@ class MainActivity : AppCompatActivity(), PlaceListener {
     private lateinit var infoConnected : DatabaseReference
     private lateinit var eventListener: ValueEventListener
     private lateinit var placesClient : PlacesClient
+    private lateinit var wifiReceiver: BroadcastReceiver
+    private var isOnline = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,6 +100,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
         setHeaderView()
         initViews()
         initRecycler()
+        initReceiver()
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener(OnCompleteListener { task ->
             if (!task.isSuccessful) {
@@ -116,18 +130,26 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             }
         })
 
+        lifecycleScope.launch {
+            val key = booleanPreferencesKey(Constants.NETWORK_STATE)
+            SettingPref(applicationContext,key).getNetworkState.collectLatest { connection ->
+                isOnline = connection
+            }
+
+        }
+
     }
 
     private fun initializePlace(){
         if (!Places.isInitialized()) {
-            Places.initialize(applicationContext, getString(R.string.map_api), Locale.US);
+            Places.initialize(applicationContext, getString(R.string.map_api), Locale.US)
         }
         placesClient = Places.createClient(this)
     }
 
     private fun manageConnection() {
         val statusRef = database.reference.child("Connection").child(auth!!.uid!!)
-        val status: DatabaseReference = statusRef.child("Status")
+        val status: DatabaseReference = statusRef.child("status")
         val lastOnlineRef: DatabaseReference = statusRef.child("lastOnline")
         infoConnected = database.getReference(".info/connected")
         eventListener = infoConnected.addValueEventListener(object : ValueEventListener {
@@ -166,11 +188,6 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             }
             return@setOnEditorActionListener false
         }
-
-        viewModel.placesLiveData.observe(this){locations ->
-            adapter.differ.submitList(locations as MutableList<AutocompletePrediction>)
-        }
-
 
         textWatcher = object : TextWatcher {
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
@@ -218,12 +235,20 @@ class MainActivity : AppCompatActivity(), PlaceListener {
             // Handle menu item selected
             when(menuItem.itemId){
                 R.id.sign_out -> {
-                    signOut()
-                    val serviceIntent = Intent(this, LocationUpdateService::class.java)
-                    stopService(serviceIntent)
-                    val intent = Intent(this, LoginActivity::class.java)
-                    startActivity(intent)
-                    finishAfterTransition()
+                    if (isOnline){
+                        database.getReference("Token").child(auth?.uid!!).removeValue()
+                            .addOnSuccessListener {
+                                val serviceIntent = Intent(this, LocationUpdateService::class.java)
+                                stopService(serviceIntent)
+                                signOut()
+                                val intent = Intent(this, LoginActivity::class.java)
+                                startActivity(intent)
+                                finishAfterTransition()
+                            }
+
+                    }else{
+                        Toast.makeText(applicationContext,"You are offline",Toast.LENGTH_SHORT).show()
+                    }
                 }
 
                 R.id.setting -> {
@@ -370,9 +395,16 @@ class MainActivity : AppCompatActivity(), PlaceListener {
 
     override fun onDestroy() {
         infoConnected.removeEventListener(eventListener)
+        unregisterReceiver(wifiReceiver)
         super.onDestroy()
     }
 
+    private fun initReceiver() {
+        wifiReceiver = ConnectivityReceiver()
+        val intentFilter = IntentFilter()
+        intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION)
+        registerReceiver(wifiReceiver, intentFilter)
+    }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         val navHostFragment =

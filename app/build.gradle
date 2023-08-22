@@ -77,8 +77,8 @@ dependencies {
     implementation 'com.google.auth:google-auth-library-oauth2-http:1.19.0'
 
 
-    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
-    implementation 'com.google.code.gson:gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
 
     //lifecycle
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1'
@@ -92,7 +92,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
 
     implementation 'com.github.bumptech.glide:glide:4.15.1'
-    kapt 'com.github.bumptech.glide:compiler:4.12.0'
+    kapt 'com.github.bumptech.glide:compiler:4.13.1'
 
     implementation 'com.google.android.gms:play-services-location:21.0.1'
     implementation 'com.google.maps.android:android-maps-utils:2.2.1'
@@ -110,6 +110,7 @@ dependencies {
     //pref datastore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    //direction sdk
     implementation 'com.google.maps:google-maps-services:2.2.0'
     implementation 'org.slf4j:slf4j-simple:1.7.25'
 }

@@ -58,7 +58,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val acceptIntent = Intent(applicationContext, NotificationAcceptReceiver::class.java)
         acceptIntent.putExtra(Constants.SENDER_ID,senderId)
         acceptIntent.putExtra(Constants.RECEIVER_ID,receiverId)
-        acceptIntent.action = "ACTION_ACCEPT"
         val grantPendingIntent = PendingIntent.getBroadcast(
             applicationContext,
             2,
@@ -119,7 +118,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             notificationManager.createNotificationChannel(channel)
         }
         val note = builder.build()
-        note.flags = Notification.FLAG_INSISTENT
+        note.flags = Notification.FLAG_ONGOING_EVENT or Notification.FLAG_INSISTENT
         notificationManager.notify(NOTIFICATION_ID, note)
     }
 

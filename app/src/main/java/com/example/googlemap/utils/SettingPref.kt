@@ -25,4 +25,15 @@ class SettingPref(private val context: Context, private val key : Preferences.Ke
         .map { preferences ->
             preferences[key] ?: false
         }
+
+    suspend fun setNetworkState(network : Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[key] = network
+        }
+    }
+
+    val getNetworkState : Flow<Boolean> =  context.dataStore.data
+        .map { preferences ->
+            preferences[key] ?: false
+        }
 }

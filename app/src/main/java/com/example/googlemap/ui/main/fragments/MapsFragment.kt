@@ -178,6 +178,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
                                 .endCap(RoundCap())
                                 .width(POLYLINE_STROKE_WIDTH_PX.toFloat())
                                 .color(requireContext().getColor(R.color.colorPrimary))
+                                .geodesic(true)
                                 .jointType(JointType.ROUND)
                                 .addAll(decodedPoints.map { LatLng(it.latitude, it.longitude) })
                             withContext(Dispatchers.Main){
@@ -191,7 +192,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
                                     val model = PolyLineModel(travelMode = TravelMode.DRIVING,polyline = polylineOptions, distance = distanceValue, duration = durationText)
                                     polyList.add(model)
                                     if (binding.lytBottomsheetLocomotion.chipCar.isChecked){
-                                       polyline =  googleMap?.addPolyline(polylineOptions)
+                                        polyline =  googleMap?.addPolyline(polylineOptions)
                                     }
                                 }else if (mode == TravelMode.WALKING){
                                     val distanceValue = route.legs[0].distance
@@ -487,9 +488,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
         val startLatitude = currentLocation?.latitude
         val origin = com.google.maps.model.LatLng(startLatitude!!,startLongitude!!)
         val destination = com.google.maps.model.LatLng(markerLatitude,markerLongitude)
-        if (polyline == null){
-            viewModel.getRoute(origin,destination)
-        }
+        viewModel.getRoute(origin,destination)
         return false
     }
 
