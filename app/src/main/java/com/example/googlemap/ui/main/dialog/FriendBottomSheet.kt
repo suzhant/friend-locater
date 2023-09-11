@@ -19,6 +19,8 @@ import com.example.googlemap.databinding.FragmentBottomSheetFriendBinding
 import com.example.googlemap.model.Friend
 import com.example.googlemap.model.NotificationModel
 import com.example.googlemap.model.UserLocation
+import com.example.googlemap.model.enums.FriendStatus
+import com.example.googlemap.model.enums.Presence
 import com.example.googlemap.model.enums.TrackStatus
 import com.example.googlemap.services.LocationDeleteWorker
 import com.example.googlemap.ui.friend.SearchViewModel
@@ -63,6 +65,7 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
 
+
         database.getReference("friends").child(auth.uid!!).addListenerForSingleValueEvent(object : ValueEventListener{
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()){
@@ -70,7 +73,9 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
                     for (dataSnap in snapshot.children){
                         val user = dataSnap.getValue(Friend::class.java)
                         user?.let {
-                            friendList.add(user)
+                            if (user.status == FriendStatus.ACCEPTED){
+                                friendList.add(user)
+                            }
                         }
                     }
                     friendAdapter.setData(friendList)
@@ -82,6 +87,8 @@ class FriendBottomSheet : BottomSheetDialogFragment()  {
             }
 
         })
+
+
 
         initRecycler()
     }

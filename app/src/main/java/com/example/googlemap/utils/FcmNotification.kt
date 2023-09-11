@@ -34,8 +34,9 @@ class FcmNotification(
         val requestQueue: RequestQueue = Volley.newRequestQueue(context)
         try {
             val mainObj = JSONObject()
-            val contentObj = JSONObject()
+            val messageObj = JSONObject()
             val dataObject = JSONObject()
+            val priorityObj = JSONObject()
             notificationModel.apply {
                 dataObject.put("senderId", senderId)
                 dataObject.put("receiverId", receiverId)
@@ -44,9 +45,11 @@ class FcmNotification(
                 dataObject.put("body",body)
             }
 
-            contentObj.put("token", userFcmToken)
-            contentObj.put("data", dataObject)
-            mainObj.put("message",contentObj)
+            priorityObj.put("priority","high")
+            messageObj.put("token", userFcmToken)
+            messageObj.put("data", dataObject)
+            messageObj.put("android",priorityObj)
+            mainObj.put("message",messageObj)
             val request: JsonObjectRequest = object : JsonObjectRequest(
                 Method.POST,
                 postUrl,

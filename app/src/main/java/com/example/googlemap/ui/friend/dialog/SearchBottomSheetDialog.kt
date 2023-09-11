@@ -138,14 +138,14 @@ class SearchBottomSheetDialog : BottomSheetDialogFragment() {
           val receiver = Friend(
               userData = friendArgs.userData,
               status = FriendStatus.PENDING,
-              timestamp = time,
+              timestamp = time
           )
 
         val sender = sharedViewModel.userData.value?.let {userData ->
             Friend(
                 userData = userData,
                 status = FriendStatus.INCOMING,
-                timestamp = time,
+                timestamp = time
             )
         }
 

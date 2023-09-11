@@ -9,11 +9,18 @@ import com.bumptech.glide.Glide
 import com.example.googlemap.R
 import com.example.googlemap.databinding.WidgetTrackFriendBinding
 import com.example.googlemap.model.Friend
+import com.example.googlemap.model.enums.Presence
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class LocateFriendAdapter(val onClick : (Friend) -> Unit) : RecyclerView.Adapter<LocateFriendAdapter.LocateViewHolder>() {
 
     private var friendList = mutableListOf<Friend>()
     private lateinit var context: Context
+    private val database = FirebaseDatabase.getInstance()
 
     inner class LocateViewHolder(val binding : WidgetTrackFriendBinding) : ViewHolder(binding.root)
 
@@ -36,6 +43,30 @@ class LocateFriendAdapter(val onClick : (Friend) -> Unit) : RecyclerView.Adapter
             btnLocate.setOnClickListener {
                 onClick(friend)
             }
+
+
+            friend.userData?.userId?.let {
+                database.getReference("Connection").child(it).addListenerForSingleValueEvent(object : ValueEventListener{
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        if (snapshot.exists()){
+                            val status = snapshot.child("status").getValue(String::class.java)
+                            status?.let {
+                                if (status == "online"){
+                                    imgProfile.strokeWidth = 10f
+                                }else{
+                                    imgProfile.strokeWidth = 0f
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+
+                    }
+
+                })
+            }
+
         }
     }
 

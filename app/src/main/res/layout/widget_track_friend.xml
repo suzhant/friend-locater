@@ -17,7 +17,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full"
         app:strokeColor="@color/colorPrimary"
-        app:strokeWidth="3dp" />
+        app:strokeWidth="0dp" />
 
     <TextView
         android:id="@+id/txt_name"
