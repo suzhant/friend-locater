@@ -533,8 +533,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
     }
 
     override fun onMapClick(p0: LatLng) {
-        val destinationRoute = viewModel.destinationLiveData.value?.id
-        if (destinationRoute !=null){
+        if (polyline !=null){
             if (binding.lytBottomsheetLocomotion.root.visibility == View.GONE){
                 startShowAnimation()
             }else{
