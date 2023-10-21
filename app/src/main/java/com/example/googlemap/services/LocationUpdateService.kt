@@ -125,8 +125,6 @@ class LocationUpdateService : Service() {
     }
 
     private fun updateLocationInDatabase(location: Location) {
-        // Replace "users" with the appropriate node in your Firebase Realtime Database
-        // Replace "userId" with the unique identifier of the user (e.g., user's ID or email)
         val auth = FirebaseAuth.getInstance()
         if (auth.currentUser!=null){
             val databaseReference = FirebaseDatabase.getInstance().reference.child("location")

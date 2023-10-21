@@ -15,6 +15,7 @@ import com.example.googlemap.utils.Constants
 import com.google.android.libraries.places.api.model.Place
 import com.google.maps.model.DirectionsResult
 import com.google.maps.model.LatLng
+import com.google.maps.model.PlacesSearchResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -52,6 +53,16 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
 
     private val _mapType = MutableLiveData(Constants.MAP_NORMAL)
     val mapType get() = _mapType
+
+    private val _hospitals = MutableLiveData<List<PlacesSearchResult>>()
+    val hospitals : LiveData<List<PlacesSearchResult>> = _hospitals
+
+    private val _friendLocation = MutableLiveData<com.google.android.gms.maps.model.LatLng>()
+    val friendLocation : LiveData<com.google.android.gms.maps.model.LatLng> = _friendLocation
+
+    fun setFriendLocation(geoPoint: com.google.android.gms.maps.model.LatLng){
+        _friendLocation.value = geoPoint
+    }
 
     fun setMapType(mapType : Int){
         _mapType.value = mapType
@@ -98,6 +109,16 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
     fun getDeviceLocation(){
         viewModelScope.launch(Dispatchers.IO) {
             locationRepository.getDeviceLocation()
+        }
+    }
+
+    fun findHospitals(latLng : GeoPoint){
+        viewModelScope.launch(Dispatchers.IO) {
+            val results =  mapRepository.findHospitals(
+                latitude = latLng.latitude,
+                longitude = latLng.longitude
+            )
+            _hospitals.postValue(results)
         }
     }
 

@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -41,7 +42,6 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.Dot
 import com.google.android.gms.maps.model.Gap
@@ -53,6 +53,8 @@ import com.google.android.gms.maps.model.PatternItem
 import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.model.RoundCap
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.crashlytics.ktx.crashlytics
 import com.google.firebase.database.DataSnapshot
@@ -90,7 +92,6 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
     private var friendMarkerPosition : Marker ?= null
     private lateinit var markerListener: ValueEventListener
     private lateinit var markerReference: DatabaseReference
-    private var bitmapDescriptor: BitmapDescriptor ?= null
     private lateinit var slideDownAnimation: Animation
     private lateinit var slideUpAnimation: Animation
     private val polyList = mutableListOf<PolyLineModel>()
@@ -98,6 +99,8 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
     private val DOT: PatternItem = Dot()
     private  val GAP: PatternItem = Gap(PATTERN_GAP_LENGTH_PX.toFloat())
     private val PATTERN_POLYLINE_DOTTED = listOf(GAP, DOT)
+    private lateinit var placesClient: PlacesClient
+    private lateinit var currentPlace : GeoPoint
 
     @SuppressLint("PotentialBehaviorOverride")
     private val callback = OnMapReadyCallback { map ->
@@ -140,6 +143,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance()
         locationRequest = createLocationRequest()
+        placesClient = Places.createClient(requireContext())
         checkGps()
 
         viewModel.destinationLiveData.observe(viewLifecycleOwner){ data ->
@@ -155,6 +159,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
             val route = GeoPoint()
             route.setCoordinate(startLongitude,startLatitude,longitude,latitude)
             viewModel.getRoute(origin,destination)
+            currentPlace = GeoPoint(latitude,longitude)
             Log.d("routes",route.toString())
             googleMap?.addMarker(MarkerOptions().position(position).title(data.address))
             val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
@@ -263,6 +268,7 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
             val latitude = location.latitude
             val longitude = location.longitude
             val position = LatLng(latitude, longitude)
+            currentPlace = GeoPoint(latitude,longitude)
             val cameraUpdate = CameraUpdateFactory.newLatLngZoom(position,zoomLevel)
             googleMap?.moveCamera(cameraUpdate)
          //   uploadLocation(position)
@@ -302,11 +308,32 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
             override fun onAnimationRepeat(animation: Animation?) {}
         })
 
+        binding.cardHospital.setOnClickListener {
+            viewModel.findHospitals(currentPlace)
+        }
+
+        viewModel.hospitals.observe(viewLifecycleOwner){hospitals ->
+            googleMap?.clear()
+            val latlng = LatLng(currentPlace.latitude,currentPlace.longitude)
+            val cameraUpdate = CameraUpdateFactory.newLatLngZoom(latlng,13f)
+            googleMap?.animateCamera(cameraUpdate,duration,null)
+
+            for (hospital in hospitals) {
+                val latLng = LatLng(hospital.geometry.location.lat,hospital.geometry.location.lng)
+                googleMap?.addMarker(MarkerOptions().position(latLng).title(hospital.name).snippet(hospital.vicinity))
+            }
+        }
+
+        binding.imgReceiver.setOnClickListener {
+           val location = viewModel.friendLocation.value
+            location?.let {
+                val cameraUpdate = CameraUpdateFactory.newLatLngZoom(location,zoomLevel)
+                googleMap?.moveCamera(cameraUpdate)
+            }
+        }
 
         populateMarkers()
     }
-
-
 
     private fun startHideAnimation() {
         binding.lytBottomsheetLocomotion.root.clearAnimation()
@@ -332,19 +359,24 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
                             val pic = userData.profilePicUrl ?: ""
                             val name = userData.userName
                             if (lat != null && long != null){
+                                viewModel.setFriendLocation(LatLng(lat,long))
                                 loadIconWithGlide(
                                     iconUrl = pic,
                                     latitude = lat,
                                     longitude = long,
                                     name = name.toString()
                                 )
+                                loadTrackIcon(
+                                    iconUrl = pic
+                                )
                             }
                         }
                     }
                 }else{
+                    binding.imgReceiver.visibility = View.GONE
                     if (friendMarkerPosition!=null){
                         friendMarkerPosition?.remove()
-                        bitmapDescriptor = null
+                        friendMarkerPosition = null
                     }
                 }
             }
@@ -357,6 +389,16 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
         markerReference.addValueEventListener(markerListener)
     }
 
+    private fun loadTrackIcon(iconUrl: String) {
+        if (!binding.imgReceiver.isVisible){
+            binding.imgReceiver.visibility = View.VISIBLE
+            Glide.with(this).asBitmap()
+                .load(iconUrl)
+                .placeholder(R.drawable.img)
+                .into(binding.imgReceiver)
+        }
+    }
+
     private fun loadIconWithGlide(iconUrl: String?,latitude : Double?, longitude : Double?,name: String?) {
         Log.d("myMarker","function called")
         Glide.with(this)
@@ -367,13 +409,13 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
             .into(object : CustomTarget<Bitmap>() {
                 override fun onResourceReady(bitmap: Bitmap, transition: Transition<in Bitmap>?) {
                     Log.d("myMarker","bitmap success")
-                    if (bitmapDescriptor == null){
+                    if (friendMarkerPosition == null){
                         Log.d("myMarker","bitmap null")
                         val markerOptions = MarkerOptions()
                             .position(LatLng(latitude!!, longitude!!))
                             .title(name)
                         friendMarkerPosition = googleMap?.addMarker(markerOptions)
-                        bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap)
+                        val bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap)
                         friendMarkerPosition?.setIcon(bitmapDescriptor)
                         return
                     }
@@ -387,10 +429,8 @@ class MapsFragment : Fragment(), GoogleMap.OnMarkerClickListener, GoogleMap.OnMa
                 }
 
                 override fun onLoadFailed(errorDrawable: Drawable?) {
-                    // Called when the image failed to load.
-                    // You can handle this case if needed.
                     Log.d("myMarker","bitmap failed")
-                    if (bitmapDescriptor == null){
+                    if (friendMarkerPosition == null){
                         val markerOptions = MarkerOptions()
                             .position(LatLng(latitude!!, longitude!!))
                             .title(name)

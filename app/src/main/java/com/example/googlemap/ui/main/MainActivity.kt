@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
+import com.example.googlemap.BuildConfig
 import com.example.googlemap.R
 import com.example.googlemap.databinding.ActivityMainBinding
 import com.example.googlemap.listener.PlaceListener
@@ -142,7 +143,7 @@ class MainActivity : AppCompatActivity(), PlaceListener {
 
     private fun initializePlace(){
         if (!Places.isInitialized()) {
-            Places.initialize(applicationContext, getString(R.string.map_api), Locale.US)
+            Places.initialize(applicationContext, BuildConfig.MAP_API_KEY, Locale.US)
         }
         placesClient = Places.createClient(this)
     }

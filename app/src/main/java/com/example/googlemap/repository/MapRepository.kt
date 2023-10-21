@@ -1,17 +1,23 @@
 package com.example.googlemap.repository
 
+import com.example.googlemap.BuildConfig
 import com.example.googlemap.listener.OnPlaceFetchedListener
 import com.example.googlemap.model.LocationResult
 import com.example.googlemap.network.ApiClient
 import com.example.googlemap.network.LocationIQService
 import com.google.maps.DirectionsApiRequest
 import com.google.maps.GeoApiContext
+import com.google.maps.NearbySearchRequest
 import com.google.maps.model.DirectionsResult
 import com.google.maps.model.LatLng
+import com.google.maps.model.PlaceType
+import com.google.maps.model.PlacesSearchResult
+import com.google.maps.model.RankBy
 import com.google.maps.model.TravelMode
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+
 
 class MapRepository {
 
@@ -23,7 +29,7 @@ class MapRepository {
 
     init {
         geoApiContext = GeoApiContext.Builder()
-            .apiKey(com.example.googlemap.BuildConfig.MAP_API_KEY)
+            .apiKey(BuildConfig.MAP_API_KEY)
             .build()
     }
 
@@ -109,6 +115,21 @@ class MapRepository {
         results.add(walkingResult)
 
         return results
+    }
+
+    fun findHospitals(latitude: Double, longitude: Double): List<PlacesSearchResult> {
+
+        // Create a NearbySearchRequest object.
+        val hospitals = NearbySearchRequest(geoApiContext)
+            .location(LatLng(latitude, longitude))
+            .radius(1500) // 2 kilometers
+            .type(PlaceType.HOSPITAL)
+            .rankby(RankBy.PROMINENCE)
+            .name("hospital")
+            .keyword("hospital")
+            .await()
+
+        return hospitals.results.toList()
     }
 
 }
