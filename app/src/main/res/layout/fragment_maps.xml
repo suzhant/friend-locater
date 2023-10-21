@@ -23,13 +23,13 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="76dp"
-            android:backgroundTint="@color/white"
+            android:backgroundTint="@color/card"
             android:src="@drawable/baseline_my_location_24"
             app:fabCustomSize="50dp"
             app:layout_constraintBottom_toTopOf="@+id/lyt_bottomsheet_locomotion"
             app:layout_constraintEnd_toEndOf="parent"
             app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full"
-            app:tint="@color/royal_blue" />
+            app:tint="@color/color_location" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="wrap_content"
@@ -56,13 +56,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:layout_marginEnd="16dp"
-            android:backgroundTint="@color/white"
+            android:backgroundTint="@color/card"
             android:src="@drawable/layers_48px"
             app:fabCustomSize="@dimen/float_btn_sm"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@+id/guideline2"
             app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full"
-            app:tint="@color/black" />
+            app:tint="@color/color_icon" />
 
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -71,13 +71,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="16dp"
-            android:backgroundTint="@color/white"
+            android:backgroundTint="@color/card"
             android:src="@drawable/spatial_tracking_48px"
             app:fabCustomSize="@dimen/float_btn_sm"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/fab_tile"
             app:shapeAppearance="@style/ShapeAppearance.Material3.Corner.Full"
-            app:tint="@color/black" />
+            app:tint="@color/color_icon" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guideline2"
@@ -101,7 +101,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
-            app:cardBackgroundColor="@color/white"
+            app:cardBackgroundColor="@color/card"
             app:cardCornerRadius="50dp"
             app:cardElevation="2dp"
             app:contentPadding="12dp"
@@ -114,6 +114,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Nearby Hospitals"
+                    android:textColor="@color/text"
                     android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
                     android:textSize="12sp" />
         </com.google.android.material.card.MaterialCardView>

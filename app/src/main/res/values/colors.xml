@@ -23,4 +23,8 @@
     <color name="blue">#0000FF</color>
     <color name="gray_100">#EFEFEF</color>
     <color name="active_green">#6EC531</color>
+    <color name="text">@color/black</color>
+    <color name="card">@color/white</color>
+    <color name="color_icon">@color/black</color>
+    <color name="color_location">@color/royal_blue</color>
 </resources>

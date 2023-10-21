@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="text">@color/white</color>
+    <color name="card">@color/black</color>
+    <color name="color_icon">@color/white</color>
+    <color name="color_location">@color/white</color>
+</resources>
